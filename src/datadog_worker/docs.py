@@ -72,15 +72,14 @@ MAIN_DOC_MD = (
 )
 
 RESOURCES_DOC_LLM = (
-    "Datadog configuration and records for the secret's organization: monitors (with overall state, "
-    "priority and tags) and monitor_groups (one row per monitor group and its state; WHERE monitor_id = n "
-    "fetches only that monitor), downtimes, SLOs with targets and slo_history(slo_id, from_time, to_time) for "
-    "the SLI and remaining error budget, incidents with severity and time-to-resolve, dashboards and "
-    "dashboard(id) for widget JSON, synthetics_tests and synthetics_results(public_id, from_time, to_time), "
-    "hosts (tags from every source merged into one `MAP`) and host_tags, users with role ids, teams, roles, "
-    "the service catalog (owning team, tier, lifecycle) and usage_summary(start_month) for monthly usage "
-    "metering. Join monitors to teams through tags['team'] = teams.handle, and spans or logs to services "
-    "on the service name."
+    "Datadog configuration and records for the secret's organization, as opposed to telemetry: alerting "
+    "and its current state, maintenance windows, service-level objectives and their error budgets, "
+    "incidents, dashboards, synthetic checks, the host inventory, the people and access model, the "
+    "service catalog and monthly usage metering. Tables page through Datadog's list endpoints on every "
+    "query; time-ranged history and single-object detail come from table functions that take the object "
+    "id and a window. Tags from every source are merged into one `MAP` you can index (tags['team']). Join "
+    "alerting to owners through tags['team'] = the team handle, and telemetry (spans, logs) to the "
+    "service catalog on the service name."
 )
 
 RESOURCES_DOC_MD = (
