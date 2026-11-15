@@ -304,8 +304,20 @@ none
 
 # ------------------------------------------------------------------ rate limits
 
-# Every route answered its first request with 429 (X-RateLimit-Reset: 0) and the worker retried.
+# The mock answers the first request to every route with 429 (X-RateLimit-Reset: 0); the
+# worker retries. Which routes earlier test files already spent depends on file order, so
+# forget the seen routes first and check one route's 429-then-200 sequence directly.
 query I
-SELECT count(*) > 0 FROM reqs() WHERE status = 429;
+SELECT ok FROM read_json('{DATADOG_MOCK_API}/__reset?routes=1');
 ----
 true
+
+query I
+SELECT count(*) FROM datadog.resources.downtimes WHERE status = 'active';
+----
+1
+
+query T
+SELECT list(status ORDER BY seq)::VARCHAR FROM reqs() WHERE path = '/api/v2/downtime';
+----
+[429, 200]

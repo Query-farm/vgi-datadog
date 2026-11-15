@@ -24,7 +24,9 @@ and is deliberately unforgiving, so a wrong request fails loudly:
   answer carries ``X-RateLimit-*`` headers too.
 
 Test hooks: ``GET /__requests`` returns the request log (seq, method, path,
-query string, body, search query, from, to, status); ``GET /__reset`` clears it.
+query string, body, search query, from, to, status); ``GET /__reset`` clears it,
+and ``GET /__reset?routes=1`` also forgets which routes were seen, so the next
+request to each route is answered with 429 again under ``MOCK_FLAKY=1``.
 
 Usage::
 
@@ -844,6 +846,8 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/__reset":
             with LOCK:
                 LOG.clear()
+                if "routes" in dict(parse_qsl(url.query)):
+                    SEEN_ROUTES.clear()
             self._reply(200, {"ok": True})
             return
         length = int(self.headers.get("Content-Length") or 0)
