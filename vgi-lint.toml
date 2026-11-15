@@ -4,13 +4,10 @@
 # contract with `vgi-lint spec`.
 
 # The worker to attach, relative to this directory. Build it first with `make build`.
-location = ".venv/bin/vgi-starter-worker"
+location = ".venv/bin/vgi-datadog-worker"
 
-# template-only:start
+# Gate at info: zero findings of any severity.
 fail_on = "info"
-# template-only:end
-# Fail on warnings while you build. Raise this to "info" before you publish the worker.
-# fork-only: fail_on = "warning"
 
 # Waive a finding only with a kind and a reason, so the waiver can be audited:
 #   domain-exemption  permanent and legitimate for this worker
@@ -25,3 +22,21 @@ ignore = [
 #   vgi-lint lint --baseline vgi-lint-baseline --update-baseline
 # and uncomment the next line. Only new findings fail after that.
 # baseline = "vgi-lint-baseline"
+
+# `id` is each Datadog resource's own primary key: numeric on monitors and hosts (v1 APIs), a
+# string or UUID everywhere else. They are never joined to each other.
+[options]
+type_consistency_ignore_names = ["id"]
+
+# VGI808 asks for foreign keys on monitor_id / incident_id. DuckDB accepts only ENFORCED +
+# ALL_ROWS constraint records, and Datadog keeps downtimes and synthetic tests that point at
+# monitors deleted since (and each table is read at a different moment), so no foreign key can be
+# attested. incident_id is the incidents table's own primary key. Joins are documented instead.
+[per_object."datadog.resources.downtimes"]
+ignore = [{ code = "VGI808", kind = "domain-exemption", reason = "downtimes outlive deleted monitors; FK cannot be ENFORCED" }]
+[per_object."datadog.resources.monitor_groups"]
+ignore = [{ code = "VGI808", kind = "domain-exemption", reason = "read from a separate monitor listing call; FK cannot be attested as ENFORCED" }]
+[per_object."datadog.resources.synthetics_tests"]
+ignore = [{ code = "VGI808", kind = "domain-exemption", reason = "a test's monitor can be deleted independently; FK cannot be ENFORCED" }]
+[per_object."datadog.resources.incidents"]
+ignore = [{ code = "VGI808", kind = "tooling-bug", reason = "incident_id is this table's own primary key, not a reference to it" }]

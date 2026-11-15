@@ -1,0 +1,318 @@
+# name: test/sql/resources.test
+# description: Datadog resources (monitors, SLOs, incidents, dashboards, synthetics, hosts, users, services, usage) through DuckDB against the strict mock
+# group: [datadog]
+
+require vgi
+
+require-env DATADOG_WORKER
+
+require-env DATADOG_MOCK_API
+
+require-env DATADOG_MOCK_API_NOUSAGE
+
+statement ok
+LOAD json;
+
+statement ok
+ATTACH 'datadog' (TYPE vgi, LOCATION '{DATADOG_WORKER}');
+
+statement ok
+CREATE SECRET dd (TYPE datadog, API_KEY 'fixture-api-key', APP_KEY 'fixture-app-key', BASE_URL '{DATADOG_MOCK_API}', PAGE_SIZE 2);
+
+# ------------------------------------------------------------------ monitors
+
+query ITI
+SELECT id, name, priority FROM datadog.resources.monitors WHERE overall_state = 'Alert' ORDER BY priority NULLS LAST, name;
+----
+1001	High error rate	1
+1004	Log errors	NULL
+
+query TI
+SELECT tags['team'] AS team, count(*) AS monitors FROM datadog.resources.monitors GROUP BY team ORDER BY monitors DESC, team NULLS LAST;
+----
+core	2
+platform	2
+NULL	1
+
+query TTT
+SELECT creator_email, url, json_extract(options, '$.thresholds.critical')::VARCHAR FROM datadog.resources.monitors WHERE id = 1002;
+----
+ada@example.com	https://app.datadoghq.com/monitors/1002	1.0
+
+query I
+SELECT count(*) FROM datadog.resources.monitors WHERE name = 'High error rate';
+----
+1
+
+query TTTT
+SELECT group_name, group_tags['host'], status, last_triggered_at FROM datadog.resources.monitor_groups WHERE monitor_id = 1001 ORDER BY group_name;
+----
+host:web-1	web-1	Alert	2026-11-01 00:02:00+00
+host:web-2	web-2	OK	2026-10-31 00:00:00+00
+
+query ITT
+SELECT monitor_id, group_name, status FROM datadog.resources.monitor_groups WHERE status = 'Alert' ORDER BY monitor_id;
+----
+1001	host:web-1	Alert
+1004	env:prod,service:api	Alert
+
+query I
+SELECT count(*) FROM datadog.resources.monitor_groups;
+----
+6
+
+# ------------------------------------------------------------------ downtimes
+
+query TTTTT
+SELECT status, scope, monitor_id, monitor_tags, is_recurring FROM datadog.resources.downtimes ORDER BY id;
+----
+active	env:staging	NULL	['team:platform']	0
+scheduled	host:web-1	1001	NULL	1
+ended	*	1002	NULL	0
+
+query TT
+SELECT scope, start_at FROM datadog.resources.downtimes WHERE status = 'active';
+----
+env:staging	2026-11-01 00:00:00+00
+
+query TT
+SELECT start_at, end_at FROM datadog.resources.downtimes WHERE monitor_id = 1001;
+----
+2026-11-08 02:00:00+00	2026-11-08 04:00:00+00
+
+# ------------------------------------------------------------------ SLOs
+
+query TTRTR
+SELECT id, type, target, timeframe, warning FROM datadog.resources.slos ORDER BY id;
+----
+aaa111bbb222	time_slice	95.0	90d	NULL
+abc123def456	metric	99.9	30d	99.95
+fed987cba654	monitor	99.0	7d	NULL
+
+query TTT
+SELECT thresholds[2].timeframe, monitor_ids, numerator FROM datadog.resources.slos WHERE id = 'abc123def456';
+----
+7d	[]	sum:requests.ok{service:web}.as_count()
+
+query T
+SELECT monitor_ids FROM datadog.resources.slos WHERE id IN ('fed987cba654');
+----
+[1003, 1004]
+
+query RRRRR
+SELECT sli_value, target, round(error_budget_remaining_pct, 6), good_events, total_events FROM datadog.resources.slo_history('abc123def456', TIMESTAMPTZ '2026-10-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 00:00:00+00') WHERE group_name IS NULL;
+----
+99.95	99.9	50.0	199900.0	200000.0
+
+query TRR
+SELECT group_name, sli_value, error_budget_remaining_pct FROM datadog.resources.slo_history('fed987cba654', TIMESTAMPTZ '2026-10-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 00:00:00+00') ORDER BY group_name NULLS FIRST;
+----
+NULL	98.5	-50.0
+env:prod,service:api	98.0	-100.0
+env:staging,service:api	99.5	50.0
+
+statement error
+SELECT * FROM datadog.resources.slo_history('nope', TIMESTAMPTZ '2026-10-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 00:00:00+00');
+----
+<REGEX>:.*HTTP 404.*
+
+# ------------------------------------------------------------------ incidents
+
+query TIR
+SELECT severity, count(*) AS incidents, avg(time_to_resolve_seconds) / 3600 AS mttr_hours FROM datadog.resources.incidents WHERE status = 'resolved' GROUP BY severity ORDER BY severity;
+----
+SEV-1	2	3.0
+SEV-2	1	1.0
+
+query ITTTTT
+SELECT incident_number, title, status, severity, services, url FROM datadog.resources.incidents WHERE resolved_at IS NULL ORDER BY incident_number;
+----
+4	Disk pressure	active	SEV-3	[db]	https://app.datadoghq.com/incidents/4
+5	Elevated 5xx	stable	SEV-2	[web]	https://app.datadoghq.com/incidents/5
+
+query TTTT
+SELECT incident_id, created_at, resolved_at, fields->>'$.root_cause.value' FROM datadog.resources.incidents WHERE incident_number = 1;
+----
+00000000-0000-4000-9000-000000000001	2026-11-01 00:01:40+00	2026-11-01 02:01:40+00	bad deploy
+
+# ------------------------------------------------------------------ dashboards
+
+query TTT
+SELECT id, layout_type, url FROM datadog.resources.dashboards ORDER BY id;
+----
+abc-def-ghi	ordered	https://app.datadoghq.com/dashboard/abc-def-ghi/web-overview
+jkl-mno-pqr	free	https://app.datadoghq.com/dashboard/jkl-mno-pqr/legacy-hosts
+stu-vwx-yz1	ordered	https://app.datadoghq.com/dashboard/stu-vwx-yz1/api-latency
+
+query TI
+SELECT w.value->>'$.definition.type' AS widget_type, count(*) AS widgets FROM datadog.resources.dashboard('abc-def-ghi') d, json_each(d.widgets) w GROUP BY widget_type ORDER BY widgets DESC, widget_type;
+----
+timeseries	2
+note	1
+query_value	1
+
+query ITT
+SELECT widget_count, tags, template_variables->>'$[0].name' FROM datadog.resources.dashboard('abc-def-ghi');
+----
+4	['team:core']	env
+
+statement error
+SELECT * FROM datadog.resources.dashboard('missing-id');
+----
+<REGEX>:.*HTTP 404.*
+
+# ------------------------------------------------------------------ synthetics
+
+query TTI
+SELECT type, subtype, count(*) AS tests FROM datadog.resources.synthetics_tests WHERE status = 'live' GROUP BY ALL ORDER BY type;
+----
+api	http	1
+browser	NULL	1
+
+query TTI
+SELECT public_id, locations, tick_every_seconds FROM datadog.resources.synthetics_tests ORDER BY public_id;
+----
+abc-123-xyz	['aws:us-east-1', 'aws:eu-central-1']	300
+def-456-uvw	['aws:us-east-1']	900
+ghi-789-rst	['aws:eu-central-1']	3600
+
+query TRR
+SELECT location, avg(passed::INT) AS success_rate, median(duration_ms) AS median_ms FROM datadog.resources.synthetics_results('abc-123-xyz', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') GROUP BY location ORDER BY location;
+----
+aws:eu-central-1	1.0	200.0
+aws:us-east-1	0.5	2560.25
+
+# A browser test is read from the browser results endpoint (the mock refuses the API one).
+query TTR
+SELECT result_id, passed, duration_ms FROM datadog.resources.synthetics_results('def-456-uvw', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') ORDER BY check_time;
+----
+b1	true	8400.0
+b2	false	30000.0
+
+# ------------------------------------------------------------------ hosts
+
+query TTI
+SELECT tags['env'] AS env, agent_version, count(*) AS hosts FROM datadog.resources.hosts GROUP BY ALL ORDER BY env, agent_version;
+----
+prod	7.58.1	1
+prod	7.60.0	3
+staging	7.58.1	1
+
+query TTRT
+SELECT host_name, tags['availability-zone'], cpu_pct, tags['legacy'] FROM datadog.resources.hosts WHERE host_name = 'web-1' OR host_name = 'lb-1' ORDER BY host_name;
+----
+lb-1	NULL	12.0	(empty)
+web-1	us-east-1a	45.5	NULL
+
+query TI
+SELECT value AS role, count(*) AS hosts FROM datadog.resources.host_tags WHERE key = 'role' GROUP BY role ORDER BY hosts DESC, role;
+----
+api	2
+web	2
+
+# Hosts missing the env tag: none; hosts with a bare tag.
+query TT
+SELECT host_name, value FROM datadog.resources.host_tags WHERE tag = 'legacy';
+----
+lb-1	(empty)
+
+# ------------------------------------------------------------------ users / teams / roles
+
+query TT
+SELECT email, name FROM datadog.resources.users WHERE status = 'Active' AND NOT service_account AND NOT mfa_enabled ORDER BY email;
+----
+grace@example.com	Grace
+
+query TI
+SELECT r.name AS role, count(*) AS users FROM datadog.resources.users u, unnest(u.role_ids) AS t(role_id) JOIN datadog.resources.roles r ON r.id = t.role_id GROUP BY role ORDER BY users DESC, role;
+----
+Datadog Read Only Role	2
+Datadog Standard Role	2
+Datadog Admin Role	1
+
+query TI
+SELECT t.handle, count(m.id) AS monitors FROM datadog.resources.teams t LEFT JOIN datadog.resources.monitors m ON m.tags['team'] = t.handle GROUP BY t.handle ORDER BY monitors DESC, t.handle;
+----
+core	2
+platform	2
+data	0
+
+# ------------------------------------------------------------------ service catalog
+
+query TT
+SELECT team, list(service ORDER BY service) AS services FROM datadog.resources.services WHERE tier = '1' GROUP BY team ORDER BY team;
+----
+core	[web]
+platform	[api]
+
+query TTTT
+SELECT service, lifecycle, languages, links->>'$[0].type' FROM datadog.resources.services WHERE team IS NULL;
+----
+legacy-batch	deprecated	[python]	runbook
+
+# ------------------------------------------------------------------ usage metering
+
+query TR
+SELECT month, value FROM datadog.resources.usage_summary(DATE '2026-09-15') WHERE usage_type = 'infra_host_top99p' ORDER BY month;
+----
+2026-09-01	40.0
+2026-10-01	44.0
+
+query I
+SELECT count(*) FROM datadog.resources.usage_summary(DATE '2026-09-01', end_month := DATE '2026-09-30');
+----
+4
+
+# Feature detection: a key without usage_read gets a message naming the permission.
+statement ok
+DROP SECRET dd;
+
+statement ok
+CREATE SECRET dd (TYPE datadog, API_KEY 'fixture-api-key', APP_KEY 'fixture-app-key', BASE_URL '{DATADOG_MOCK_API_NOUSAGE}');
+
+statement error
+SELECT * FROM datadog.resources.usage_summary(DATE '2026-09-01');
+----
+<REGEX>:.*usage_read.*
+
+# ------------------------------------------------------------------ credentials and sites
+
+statement ok
+DROP SECRET dd;
+
+statement ok
+CREATE SECRET dd (TYPE datadog, API_KEY 'wrong-key', APP_KEY 'fixture-app-key', BASE_URL '{DATADOG_MOCK_API}');
+
+statement error
+SELECT * FROM datadog.resources.roles;
+----
+<REGEX>:.*HTTP 403.*APP_KEY.*
+
+statement ok
+DROP SECRET dd;
+
+statement ok
+CREATE SECRET dd (TYPE datadog, API_KEY 'fixture-api-key', APP_KEY 'fixture-app-key', SITE 'mars1');
+
+statement error
+SELECT * FROM datadog.resources.roles;
+----
+<REGEX>:.*unknown SITE.*
+
+# SITE picks the app URL used in links, BASE_URL still points the API at the mock.
+statement ok
+DROP SECRET dd;
+
+statement ok
+CREATE SECRET dd (TYPE datadog, API_KEY 'fixture-api-key', APP_KEY 'fixture-app-key', SITE 'eu', BASE_URL '{DATADOG_MOCK_API}');
+
+query T
+SELECT url FROM datadog.resources.monitors WHERE id = 1001;
+----
+https://app.datadoghq.eu/monitors/1001
+
+# Key values never appear in duckdb_secrets().
+query I
+SELECT count(*) FROM duckdb_secrets() WHERE secret_string LIKE '%fixture-api-key%' OR secret_string LIKE '%fixture-app-key%';
+----
+0

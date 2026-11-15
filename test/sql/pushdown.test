@@ -1,0 +1,311 @@
+# name: test/sql/pushdown.test
+# description: SQL predicates reach Datadog as search terms, time windows and list filters (checked in the mock's request log)
+# group: [datadog]
+
+require vgi
+
+require-env DATADOG_WORKER
+
+require-env DATADOG_MOCK_API
+
+# The mock's request log is read with read_json over HTTP; /__reset clears it.
+statement ok
+LOAD httpfs;
+
+statement ok
+LOAD json;
+
+statement ok
+ATTACH 'datadog' (TYPE vgi, LOCATION '{DATADOG_WORKER}');
+
+statement ok
+CREATE SECRET dd (TYPE datadog, API_KEY 'fixture-api-key', APP_KEY 'fixture-app-key', BASE_URL '{DATADOG_MOCK_API}', PAGE_SIZE 2);
+
+statement ok
+CREATE MACRO reqs() AS TABLE SELECT * FROM read_json('{DATADOG_MOCK_API}/__requests', columns = {'seq': 'BIGINT', 'method': 'VARCHAR', 'path': 'VARCHAR', 'query': 'VARCHAR', 'body': 'VARCHAR', 'search': 'VARCHAR', 'frm': 'VARCHAR', 'to': 'VARCHAR', 'status': 'BIGINT'});
+
+statement ok
+CREATE MACRO reset_log() AS (SELECT ok FROM read_json('{DATADOG_MOCK_API}/__reset'));
+
+statement ok
+CREATE MACRO last_ok(p) AS TABLE SELECT * FROM reqs() WHERE status = 200 AND path = p ORDER BY seq DESC LIMIT 1;
+
+# ------------------------------------------------------------------ logs: terms and window
+
+query I
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE status = 'error' AND env = 'prod' AND host IN ('web-1', 'web-2') AND service <> 'api' AND ts >= TIMESTAMPTZ '2026-11-01 00:01:30+00';
+----
+3
+
+query TTT
+SELECT search, frm, "to" FROM last_ok('/api/v2/logs/events/search');
+----
+status:"error" env:"prod" host:("web-1" OR "web-2") -service:"api"	2026-11-01T00:01:30.000Z	2026-11-02T00:00:00.000Z
+
+# The user's query is parenthesised, so its OR cannot swallow the pushed terms.
+query I
+SELECT count(*) FROM datadog.main.logs('service:web OR service:api', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE status = 'warn';
+----
+1
+
+query T
+SELECT search FROM last_ok('/api/v2/logs/events/search');
+----
+(service:web OR service:api) status:"warn"
+
+# Escaping: a double quote and a backslash in a value are escaped inside the quoted term.
+query I
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE service = 'we"b\x';
+----
+0
+
+query T
+SELECT search FROM last_ok('/api/v2/logs/events/search');
+----
+service:"we\"b\\x"
+
+# An OR over two different columns is not a search term; DuckDB applies it.
+query I
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE service = 'nginx' OR status = 'warn';
+----
+2
+
+query T
+SELECT search FROM last_ok('/api/v2/logs/events/search');
+----
+*
+
+# OR of equalities on one column becomes one grouped term; IS NOT NULL becomes attr:*.
+query I
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE (source = 'nginx' OR source = 'python') AND env IS NOT NULL;
+----
+10
+
+query T
+SELECT search FROM last_ok('/api/v2/logs/events/search');
+----
+source:("nginx" OR "python") env:*
+
+# ts <= x is sent as to = x + 1 ms (Datadog's to is exclusive); an explicit window clamps it.
+query I
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-03 00:00:00+00') WHERE ts <= TIMESTAMPTZ '2026-11-01 00:02:00+00';
+----
+2
+
+query TT
+SELECT frm, "to" FROM last_ok('/api/v2/logs/events/search');
+----
+2026-11-01T00:00:00.000Z	2026-11-01T00:02:00.001Z
+
+# A contradictory window sends no request at all.
+query I
+SELECT reset_log();
+----
+true
+
+query I
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE ts > TIMESTAMPTZ '2026-11-05 00:00:00+00';
+----
+0
+
+query I
+SELECT count(*) FROM reqs() WHERE path = '/api/v2/logs/events/search';
+----
+0
+
+# Body: sort, page limit (PAGE_SIZE 2, capped by max_rows), indexes and storage tier.
+query I
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00', max_rows := 1, newest_first := true, indexes := 'main, audit', storage_tier := 'flex');
+----
+1
+
+query TITT
+SELECT json_extract_string(body, '$.sort'), json_extract(body, '$.page.limit')::INT, json_extract(body, '$.filter.indexes')::VARCHAR, json_extract_string(body, '$.filter.storage_tier') FROM last_ok('/api/v2/logs/events/search');
+----
+-timestamp	1	["main","audit"]	flex
+
+# Cursor paging: 10 logs at 2 per page = 5 pages, each carrying the previous meta.page.after.
+query I
+SELECT reset_log();
+----
+true
+
+query I
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00');
+----
+10
+
+query II
+SELECT count(*), count(json_extract_string(body, '$.page.cursor')) FROM reqs() WHERE path = '/api/v2/logs/events/search' AND status = 200;
+----
+5	4
+
+# ------------------------------------------------------------------ spans, events, audit
+
+query I
+SELECT count(*) FROM datadog.main.spans('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE resource_name = 'GET /api/orders' AND env = 'prod' AND status = 'error';
+----
+1
+
+query TT
+SELECT search, json_extract_string(body, '$.data.type') FROM last_ok('/api/v2/spans/events/search');
+----
+resource_name:"GET /api/orders" env:"prod" status:"error"	search_request
+
+query I
+SELECT count(*) FROM datadog.main.spans('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE trace_id = '7003' AND operation_name = 'http.request';
+----
+2
+
+query T
+SELECT search FROM last_ok('/api/v2/spans/events/search');
+----
+trace_id:"7003" operation_name:"http.request"
+
+query I
+SELECT count(*) FROM datadog.main.events('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE source = 'github' AND status = 'success';
+----
+2
+
+query T
+SELECT search FROM last_ok('/api/v2/events/search');
+----
+source:"github" status:"success"
+
+query I
+SELECT count(*) FROM datadog.main.audit_events('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE user_email = 'ada@example.com' AND asset_type = 'monitor' AND event_name = 'Request' AND action IN ('deleted', 'modified');
+----
+2
+
+query T
+SELECT search FROM last_ok('/api/v2/audit/events/search');
+----
+@usr.email:"ada@example.com" @asset.type:"monitor" @evt.name:"Request" @action:("deleted" OR "modified")
+
+# ------------------------------------------------------------------ metrics and aggregates
+
+query I
+SELECT count(*) FROM datadog.main.metrics_query('avg:system.cpu.user{env:prod} by {host}', TIMESTAMPTZ '2026-11-01 00:00:00.5+00', TIMESTAMPTZ '2026-11-01 00:20:00.5+00');
+----
+6
+
+query T
+SELECT query FROM last_ok('/api/v1/query');
+----
+from=1793491200&to=1793492401&query=avg%3Asystem.cpu.user%7Benv%3Aprod%7D+by+%7Bhost%7D
+
+query I
+SELECT count(*) FROM datadog.main.logs_aggregate('env:prod', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00', group_by := 'service, @http.method', aggregation := 'pc95', metric := '@duration', group_limit := 3, rollup := '1h');
+----
+4
+
+query TTTT
+SELECT search, json_extract(body, '$.compute')::VARCHAR, json_extract(body, '$.group_by[*].facet')::VARCHAR, json_extract(body, '$.group_by[0].limit')::VARCHAR FROM last_ok('/api/v2/logs/analytics/aggregate');
+----
+env:prod	[{"aggregation":"pc95","type":"timeseries","metric":"@duration","interval":"1h"}]	["service", "@http.method"]	3
+
+query I
+SELECT count(*) FROM datadog.main.metrics WHERE metric_type = 'count';
+----
+1
+
+query T
+SELECT query FROM last_ok('/api/v2/metrics');
+----
+page%5Bsize%5D=2&filter%5Bmetric_type%5D=count
+
+# ------------------------------------------------------------------ resources list filters
+
+query T
+SELECT name FROM datadog.resources.monitors WHERE id = 1003;
+----
+API latency
+
+query TT
+SELECT path, query FROM last_ok('/api/v1/monitor/1003');
+----
+/api/v1/monitor/1003	(empty)
+
+query I
+SELECT count(*) FROM datadog.resources.monitors WHERE name = 'Heartbeat';
+----
+1
+
+query T
+SELECT query FROM last_ok('/api/v1/monitor');
+----
+page=0&page_size=2&name=Heartbeat
+
+query T
+SELECT group_name FROM datadog.resources.monitor_groups WHERE monitor_id = 1004;
+----
+env:prod,service:api
+
+query T
+SELECT query FROM last_ok('/api/v1/monitor/1004');
+----
+group_states=all
+
+query I
+SELECT count(*) FROM datadog.resources.slos WHERE id IN ('abc123def456', 'fed987cba654');
+----
+2
+
+# Two SLOs fill a page of 2, so the last request is the (empty) second page.
+query T
+SELECT query FROM last_ok('/api/v1/slo');
+----
+limit=2&offset=2&ids=abc123def456%2Cfed987cba654
+
+query I
+SELECT count(*) FROM datadog.resources.hosts WHERE host_name = 'web-1';
+----
+1
+
+query T
+SELECT query FROM last_ok('/api/v1/hosts');
+----
+start=0&count=2&filter=web-1
+
+query I
+SELECT count(*) FROM datadog.resources.users WHERE status = 'Pending';
+----
+1
+
+query T
+SELECT query FROM last_ok('/api/v2/users');
+----
+page%5Bsize%5D=2&page%5Bnumber%5D=0&filter%5Bstatus%5D=Pending
+
+query I
+SELECT count(*) FROM datadog.resources.downtimes WHERE status = 'active';
+----
+1
+
+query T
+SELECT query FROM last_ok('/api/v2/downtime');
+----
+page%5Boffset%5D=0&page%5Blimit%5D=2&current_only=true
+
+query I
+SELECT count(*) FROM datadog.resources.synthetics_results('abc-123-xyz', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 00:05:00+00');
+----
+2
+
+query T
+SELECT query FROM last_ok('/api/v1/synthetics/tests/abc-123-xyz/results');
+----
+from_ts=1793491200000&to_ts=1793491500000
+
+query T
+SELECT query FROM last_ok('/api/v1/slo/abc123def456/history') UNION ALL SELECT 'none' WHERE NOT EXISTS (SELECT 1 FROM last_ok('/api/v1/slo/abc123def456/history'));
+----
+none
+
+# ------------------------------------------------------------------ rate limits
+
+# Every route answered its first request with 429 (X-RateLimit-Reset: 0) and the worker retried.
+query I
+SELECT count(*) > 0 FROM reqs() WHERE status = 429;
+----
+true

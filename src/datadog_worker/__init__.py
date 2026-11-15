@@ -1,0 +1,1 @@
+"""VGI datadog worker package."""

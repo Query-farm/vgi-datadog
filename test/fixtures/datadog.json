@@ -1,0 +1,2566 @@
+{
+ "audit": [
+  {
+   "attributes": {
+    "attributes": {
+     "action": "modified",
+     "asset": {
+      "id": "monitor-1",
+      "name": "High error rate",
+      "type": "monitor"
+     },
+     "evt": {
+      "name": "Request"
+     },
+     "usr": {
+      "email": "ada@example.com",
+      "id": "u-1"
+     }
+    },
+    "message": "ada@example.com modified monitor High error rate",
+    "service": "monitor",
+    "tags": [
+     "source:audit"
+    ],
+    "timestamp": "2026-11-01T00:00:50.000Z"
+   },
+   "id": "aud-1",
+   "type": "audit"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "action": "created",
+     "asset": {
+      "id": "dashboard-2",
+      "name": "Web overview",
+      "type": "dashboard"
+     },
+     "evt": {
+      "name": "Request"
+     },
+     "usr": {
+      "email": "grace@example.com",
+      "id": "u-2"
+     }
+    },
+    "message": "grace@example.com created dashboard Web overview",
+    "service": "dashboard",
+    "tags": [
+     "source:audit"
+    ],
+    "timestamp": "2026-11-01T00:02:30.000Z"
+   },
+   "id": "aud-2",
+   "type": "audit"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "action": "deleted",
+     "asset": {
+      "id": "monitor-3",
+      "name": "Old disk check",
+      "type": "monitor"
+     },
+     "evt": {
+      "name": "Request"
+     },
+     "usr": {
+      "email": "ada@example.com",
+      "id": "u-3"
+     }
+    },
+    "message": "ada@example.com deleted monitor Old disk check",
+    "service": "monitor",
+    "tags": [
+     "source:audit"
+    ],
+    "timestamp": "2026-11-01T00:04:10.000Z"
+   },
+   "id": "aud-3",
+   "type": "audit"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "action": "accessed",
+     "asset": {
+      "id": "api_key-4",
+      "name": "ci key",
+      "type": "api_key"
+     },
+     "evt": {
+      "name": "Request"
+     },
+     "usr": {
+      "email": "ci@example.com",
+      "id": "u-4"
+     }
+    },
+    "message": "ci@example.com accessed api_key ci key",
+    "service": "apikey",
+    "tags": [
+     "source:audit"
+    ],
+    "timestamp": "2026-11-01T00:05:50.000Z"
+   },
+   "id": "aud-4",
+   "type": "audit"
+  }
+ ],
+ "dashboard_definitions": {
+  "abc-def-ghi": {
+   "author_handle": "ada@example.com",
+   "created_at": "2025-06-01T00:00:00.000000+00:00",
+   "description": "Golden signals",
+   "id": "abc-def-ghi",
+   "is_read_only": false,
+   "layout_type": "ordered",
+   "modified_at": "2026-10-01T00:00:00.000000+00:00",
+   "tags": [
+    "team:core"
+   ],
+   "template_variables": [
+    {
+     "default": "prod",
+     "name": "env",
+     "prefix": "env"
+    }
+   ],
+   "title": "Web overview",
+   "url": "/dashboard/abc-def-ghi/web-overview",
+   "widgets": [
+    {
+     "definition": {
+      "requests": [
+       {
+        "q": "avg:system.cpu.user{$env} by {host}"
+       }
+      ],
+      "title": "CPU",
+      "type": "timeseries"
+     },
+     "id": 1
+    },
+    {
+     "definition": {
+      "requests": [
+       {
+        "q": "sum:errors{$env}"
+       }
+      ],
+      "title": "Errors",
+      "type": "query_value"
+     },
+     "id": 2
+    },
+    {
+     "definition": {
+      "requests": [
+       {
+        "q": "avg:system.load.1{$env}"
+       }
+      ],
+      "title": "Load",
+      "type": "timeseries"
+     },
+     "id": 3
+    },
+    {
+     "definition": {
+      "content": "Owned by core",
+      "type": "note"
+     },
+     "id": 4
+    }
+   ]
+  }
+ },
+ "dashboards": [
+  {
+   "author_handle": "ada@example.com",
+   "created_at": "2025-06-01T00:00:00.000000+00:00",
+   "description": "Golden signals",
+   "id": "abc-def-ghi",
+   "is_read_only": false,
+   "layout_type": "ordered",
+   "modified_at": "2026-10-01T00:00:00.000000+00:00",
+   "title": "Web overview",
+   "url": "/dashboard/abc-def-ghi/web-overview"
+  },
+  {
+   "author_handle": "grace@example.com",
+   "created_at": "2024-01-01T00:00:00.000000+00:00",
+   "description": null,
+   "id": "jkl-mno-pqr",
+   "is_read_only": true,
+   "layout_type": "free",
+   "modified_at": "2025-01-01T00:00:00.000000+00:00",
+   "title": "Legacy hosts",
+   "url": "/dashboard/jkl-mno-pqr/legacy-hosts"
+  },
+  {
+   "author_handle": "ada@example.com",
+   "created_at": "2026-02-01T00:00:00.000000+00:00",
+   "description": "p50/p95/p99",
+   "id": "stu-vwx-yz1",
+   "is_read_only": false,
+   "layout_type": "ordered",
+   "modified_at": "2026-02-02T00:00:00.000000+00:00",
+   "title": "API latency",
+   "url": "/dashboard/stu-vwx-yz1/api-latency"
+  }
+ ],
+ "downtimes": [
+  {
+   "attributes": {
+    "canceled": null,
+    "created": "2026-10-31T00:00:00+00:00",
+    "message": "staging rebuild",
+    "modified": "2026-10-31T00:00:00+00:00",
+    "monitor_identifier": {
+     "monitor_tags": [
+      "team:platform"
+     ]
+    },
+    "schedule": {
+     "end": null,
+     "start": "2026-11-01T00:00:00+00:00"
+    },
+    "scope": "env:staging",
+    "status": "active"
+   },
+   "id": "00000000-0000-4000-8000-000000000001",
+   "relationships": {
+    "created_by": {
+     "data": {
+      "id": "u-1",
+      "type": "users"
+     }
+    }
+   },
+   "type": "downtime"
+  },
+  {
+   "attributes": {
+    "canceled": null,
+    "created": "2026-10-20T00:00:00+00:00",
+    "message": "patching",
+    "modified": "2026-10-21T00:00:00+00:00",
+    "monitor_identifier": {
+     "monitor_id": 1001
+    },
+    "schedule": {
+     "current_downtime": {
+      "end": "2026-11-08T04:00:00+00:00",
+      "start": "2026-11-08T02:00:00+00:00"
+     },
+     "recurrences": [
+      {
+       "duration": "2h",
+       "rrule": "FREQ=WEEKLY;BYDAY=SU",
+       "start": "2026-11-08T02:00"
+      }
+     ],
+     "timezone": "UTC"
+    },
+    "scope": "host:web-1",
+    "status": "scheduled"
+   },
+   "id": "00000000-0000-4000-8000-000000000002",
+   "relationships": {
+    "created_by": {
+     "data": {
+      "id": "u-2",
+      "type": "users"
+     }
+    }
+   },
+   "type": "downtime"
+  },
+  {
+   "attributes": {
+    "canceled": null,
+    "created": "2026-08-31T00:00:00+00:00",
+    "message": null,
+    "modified": "2026-09-01T01:00:00+00:00",
+    "monitor_identifier": {
+     "monitor_id": 1002
+    },
+    "schedule": {
+     "end": "2026-09-01T01:00:00+00:00",
+     "start": "2026-09-01T00:00:00+00:00"
+    },
+    "scope": "*",
+    "status": "ended"
+   },
+   "id": "00000000-0000-4000-8000-000000000003",
+   "relationships": {
+    "created_by": {
+     "data": {
+      "id": "u-1",
+      "type": "users"
+     }
+    }
+   },
+   "type": "downtime"
+  }
+ ],
+ "events": [
+  {
+   "attributes": {
+    "attributes": {
+     "aggregation_key": "agg-1",
+     "evt": {
+      "id": "5001",
+      "type": "change"
+     },
+     "hostname": null,
+     "priority": "normal",
+     "status": "success",
+     "timestamp": 1793491300000,
+     "title": "Deployed web 1.4.2"
+    },
+    "message": "Deployed web 1.4.2 details",
+    "tags": [
+     "source:github",
+     "deploy",
+     "service:web",
+     "env:prod"
+    ],
+    "timestamp": "2026-11-01T00:01:40.000Z"
+   },
+   "id": "evt-1",
+   "type": "event"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "aggregation_key": "agg-0",
+     "evt": {
+      "id": "5002",
+      "type": "change"
+     },
+     "hostname": null,
+     "priority": "normal",
+     "status": "error",
+     "timestamp": 1793491400000,
+     "title": "Monitor triggered: High error rate"
+    },
+    "message": "Monitor triggered: High error rate details",
+    "tags": [
+     "source:alert",
+     "monitor",
+     "service:web"
+    ],
+    "timestamp": "2026-11-01T00:03:20.000Z"
+   },
+   "id": "evt-2",
+   "type": "event"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "aggregation_key": "agg-1",
+     "evt": {
+      "id": "5003",
+      "type": "change"
+     },
+     "hostname": null,
+     "priority": "normal",
+     "status": "success",
+     "timestamp": 1793492100000,
+     "title": "Deployed api 2.0.0"
+    },
+    "message": "Deployed api 2.0.0 details",
+    "tags": [
+     "source:github",
+     "deploy",
+     "service:api",
+     "env:prod"
+    ],
+    "timestamp": "2026-11-01T00:15:00.000Z"
+   },
+   "id": "evt-3",
+   "type": "event"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "aggregation_key": "agg-0",
+     "evt": {
+      "id": "5004",
+      "type": "change"
+     },
+     "hostname": "node-7",
+     "priority": "normal",
+     "status": "warning",
+     "timestamp": 1793492200000,
+     "title": "Node drained"
+    },
+    "message": "Node drained details",
+    "tags": [
+     "source:kubernetes",
+     "env:prod"
+    ],
+    "timestamp": "2026-11-01T00:16:40.000Z"
+   },
+   "id": "evt-4",
+   "type": "event"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "aggregation_key": "agg-1",
+     "evt": {
+      "id": "5005",
+      "type": "change"
+     },
+     "hostname": null,
+     "priority": "normal",
+     "status": "success",
+     "timestamp": 1793581200000,
+     "title": "Deployed web 1.4.3"
+    },
+    "message": "Deployed web 1.4.3 details",
+    "tags": [
+     "source:github",
+     "deploy",
+     "service:web",
+     "env:prod"
+    ],
+    "timestamp": "2026-11-02T01:00:00.000Z"
+   },
+   "id": "evt-5",
+   "type": "event"
+  }
+ ],
+ "host_tags": {
+  "env:prod": [
+   "web-1",
+   "web-2",
+   "api-1",
+   "lb-1"
+  ],
+  "env:staging": [
+   "api-2"
+  ],
+  "legacy": [
+   "lb-1"
+  ],
+  "role:api": [
+   "api-1",
+   "api-2"
+  ],
+  "role:web": [
+   "web-1",
+   "web-2"
+  ]
+ },
+ "hosts": [
+  {
+   "aliases": [
+    "i-0001"
+   ],
+   "apps": [
+    "agent",
+    "nginx"
+   ],
+   "host_name": "web-1",
+   "id": 11,
+   "is_muted": false,
+   "last_reported_time": 1793491700,
+   "meta": {
+    "agent_version": "7.60.0",
+    "platform": "linux"
+   },
+   "metrics": {
+    "cpu": 45.5,
+    "iowait": 1.5,
+    "load": 0.8
+   },
+   "name": "web-1",
+   "sources": [
+    "agent",
+    "aws"
+   ],
+   "tags_by_source": {
+    "Amazon Web Services": [
+     "availability-zone:us-east-1a"
+    ],
+    "Datadog": [
+     "env:prod",
+     "role:web"
+    ]
+   },
+   "up": true
+  },
+  {
+   "aliases": [],
+   "apps": [
+    "agent"
+   ],
+   "host_name": "web-2",
+   "id": 12,
+   "is_muted": false,
+   "last_reported_time": 1793491700,
+   "meta": {
+    "agent_version": "7.60.0",
+    "platform": "linux"
+   },
+   "metrics": {
+    "cpu": 5.0,
+    "iowait": 0.1,
+    "load": 0.1
+   },
+   "name": "web-2",
+   "sources": [
+    "agent"
+   ],
+   "tags_by_source": {
+    "Datadog": [
+     "env:prod",
+     "role:web"
+    ]
+   },
+   "up": true
+  },
+  {
+   "aliases": [],
+   "apps": [
+    "agent",
+    "postgres"
+   ],
+   "host_name": "api-1",
+   "id": 13,
+   "is_muted": true,
+   "last_reported_time": 1793491600,
+   "meta": {
+    "agent_version": "7.58.1",
+    "platform": "linux"
+   },
+   "metrics": {
+    "cpu": 70.0,
+    "iowait": 4.0,
+    "load": 1.9
+   },
+   "name": "api-1",
+   "sources": [
+    "agent"
+   ],
+   "tags_by_source": {
+    "Datadog": [
+     "env:prod",
+     "role:api"
+    ]
+   },
+   "up": true
+  },
+  {
+   "aliases": [],
+   "apps": [
+    "agent"
+   ],
+   "host_name": "api-2",
+   "id": 14,
+   "is_muted": false,
+   "last_reported_time": 1793404800,
+   "meta": {
+    "agent_version": "7.58.1",
+    "platform": "windows"
+   },
+   "metrics": {
+    "cpu": null,
+    "iowait": null,
+    "load": null
+   },
+   "name": "api-2",
+   "sources": [
+    "agent"
+   ],
+   "tags_by_source": {
+    "Datadog": [
+     "env:staging",
+     "role:api"
+    ]
+   },
+   "up": false
+  },
+  {
+   "aliases": [],
+   "apps": [
+    "agent",
+    "nginx"
+   ],
+   "host_name": "lb-1",
+   "id": 15,
+   "is_muted": false,
+   "last_reported_time": 1793491700,
+   "meta": {
+    "agent_version": "7.60.0",
+    "platform": "linux"
+   },
+   "metrics": {
+    "cpu": 12.0,
+    "iowait": 0.2,
+    "load": 0.3
+   },
+   "name": "lb-1",
+   "sources": [
+    "agent"
+   ],
+   "tags_by_source": {
+    "Datadog": [
+     "env:prod",
+     "role:lb",
+     "legacy"
+    ]
+   },
+   "up": true
+  }
+ ],
+ "incidents": [
+  {
+   "attributes": {
+    "created": "2026-11-01T00:01:40.000Z",
+    "customer_impact_scope": "checkout failing",
+    "customer_impacted": true,
+    "detected": "2026-10-31T23:59:40.000Z",
+    "fields": {
+     "root_cause": {
+      "type": "textbox",
+      "value": "bad deploy"
+     },
+     "services": {
+      "type": "autocomplete",
+      "value": [
+       "web"
+      ]
+     },
+     "severity": {
+      "type": "dropdown",
+      "value": "SEV-1"
+     },
+     "state": {
+      "type": "dropdown",
+      "value": "resolved"
+     },
+     "teams": {
+      "type": "autocomplete",
+      "value": [
+       "core"
+      ]
+     }
+    },
+    "modified": "2026-11-01T02:02:40.000Z",
+    "public_id": 1,
+    "resolved": "2026-11-01T02:01:40.000Z",
+    "time_to_detect": 120,
+    "time_to_internal_response": 300,
+    "time_to_repair": 7140,
+    "time_to_resolve": 7200,
+    "title": "Checkout errors"
+   },
+   "id": "00000000-0000-4000-9000-000000000001",
+   "relationships": {
+    "commander_user": {
+     "data": {
+      "id": "u-1",
+      "type": "users"
+     }
+    }
+   },
+   "type": "incidents"
+  },
+  {
+   "attributes": {
+    "created": "2026-11-01T01:23:20.000Z",
+    "customer_impact_scope": null,
+    "customer_impacted": false,
+    "detected": "2026-11-01T01:21:20.000Z",
+    "fields": {
+     "root_cause": {
+      "type": "textbox",
+      "value": "bad deploy"
+     },
+     "services": {
+      "type": "autocomplete",
+      "value": [
+       "api"
+      ]
+     },
+     "severity": {
+      "type": "dropdown",
+      "value": "SEV-2"
+     },
+     "state": {
+      "type": "dropdown",
+      "value": "resolved"
+     },
+     "teams": {
+      "type": "autocomplete",
+      "value": [
+       "platform"
+      ]
+     }
+    },
+    "modified": "2026-11-01T02:24:20.000Z",
+    "public_id": 2,
+    "resolved": "2026-11-01T02:23:20.000Z",
+    "time_to_detect": 120,
+    "time_to_internal_response": 300,
+    "time_to_repair": 3540,
+    "time_to_resolve": 3600,
+    "title": "Slow API"
+   },
+   "id": "00000000-0000-4000-9000-000000000002",
+   "relationships": {
+    "commander_user": {
+     "data": {
+      "id": "u-2",
+      "type": "users"
+     }
+    }
+   },
+   "type": "incidents"
+  },
+  {
+   "attributes": {
+    "created": "2026-11-01T05:33:20.000Z",
+    "customer_impact_scope": "checkout failing",
+    "customer_impacted": true,
+    "detected": "2026-11-01T05:31:20.000Z",
+    "fields": {
+     "root_cause": {
+      "type": "textbox",
+      "value": "bad deploy"
+     },
+     "services": {
+      "type": "autocomplete",
+      "value": [
+       "web",
+       "api"
+      ]
+     },
+     "severity": {
+      "type": "dropdown",
+      "value": "SEV-1"
+     },
+     "state": {
+      "type": "dropdown",
+      "value": "resolved"
+     },
+     "teams": {
+      "type": "autocomplete",
+      "value": [
+       "core"
+      ]
+     }
+    },
+    "modified": "2026-11-01T09:34:20.000Z",
+    "public_id": 3,
+    "resolved": "2026-11-01T09:33:20.000Z",
+    "time_to_detect": 120,
+    "time_to_internal_response": 300,
+    "time_to_repair": 14340,
+    "time_to_resolve": 14400,
+    "title": "Login outage"
+   },
+   "id": "00000000-0000-4000-9000-000000000003",
+   "relationships": {
+    "commander_user": {
+     "data": {
+      "id": "u-3",
+      "type": "users"
+     }
+    }
+   },
+   "type": "incidents"
+  },
+  {
+   "attributes": {
+    "created": "2026-11-01T11:06:40.000Z",
+    "customer_impact_scope": null,
+    "customer_impacted": false,
+    "detected": "2026-11-01T11:04:40.000Z",
+    "fields": {
+     "root_cause": {
+      "type": "textbox",
+      "value": null
+     },
+     "services": {
+      "type": "autocomplete",
+      "value": [
+       "db"
+      ]
+     },
+     "severity": {
+      "type": "dropdown",
+      "value": "SEV-3"
+     },
+     "state": {
+      "type": "dropdown",
+      "value": "active"
+     },
+     "teams": {
+      "type": "autocomplete",
+      "value": [
+       "platform"
+      ]
+     }
+    },
+    "modified": "2026-11-01T11:07:40.000Z",
+    "public_id": 4,
+    "resolved": null,
+    "time_to_detect": 120,
+    "time_to_internal_response": 300,
+    "time_to_repair": null,
+    "time_to_resolve": null,
+    "title": "Disk pressure"
+   },
+   "id": "00000000-0000-4000-9000-000000000004",
+   "relationships": {
+    "commander_user": {
+     "data": {
+      "id": "u-4",
+      "type": "users"
+     }
+    }
+   },
+   "type": "incidents"
+  },
+  {
+   "attributes": {
+    "created": "2026-11-01T16:40:00.000Z",
+    "customer_impact_scope": "checkout failing",
+    "customer_impacted": true,
+    "detected": "2026-11-01T16:38:00.000Z",
+    "fields": {
+     "root_cause": {
+      "type": "textbox",
+      "value": null
+     },
+     "services": {
+      "type": "autocomplete",
+      "value": [
+       "web"
+      ]
+     },
+     "severity": {
+      "type": "dropdown",
+      "value": "SEV-2"
+     },
+     "state": {
+      "type": "dropdown",
+      "value": "stable"
+     },
+     "teams": {
+      "type": "autocomplete",
+      "value": []
+     }
+    },
+    "modified": "2026-11-01T16:41:00.000Z",
+    "public_id": 5,
+    "resolved": null,
+    "time_to_detect": 120,
+    "time_to_internal_response": 300,
+    "time_to_repair": null,
+    "time_to_resolve": null,
+    "title": "Elevated 5xx"
+   },
+   "id": "00000000-0000-4000-9000-000000000005",
+   "relationships": {
+    "commander_user": {
+     "data": {
+      "id": "u-5",
+      "type": "users"
+     }
+    }
+   },
+   "type": "incidents"
+  }
+ ],
+ "logs": [
+  {
+   "attributes": {
+    "attributes": {
+     "duration": 12000000,
+     "http": {
+      "method": "GET",
+      "status_code": 200
+     }
+    },
+    "host": "web-1",
+    "message": "GET /api/users 200",
+    "service": "web",
+    "status": "info",
+    "tags": [
+     "env:prod",
+     "service:web",
+     "source:python"
+    ],
+    "timestamp": "2026-11-01T00:01:00.000Z"
+   },
+   "id": "AQAAAZ0001",
+   "type": "log"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "dd": {
+      "trace_id": "7001"
+     },
+     "duration": 950000000,
+     "http": {
+      "method": "GET",
+      "status_code": 500
+     }
+    },
+    "host": "web-1",
+    "message": "GET /api/orders 500",
+    "service": "web",
+    "status": "error",
+    "tags": [
+     "env:prod",
+     "service:web",
+     "source:python"
+    ],
+    "timestamp": "2026-11-01T00:02:00.000Z"
+   },
+   "id": "AQAAAZ0002",
+   "type": "log"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "duration": 30000000,
+     "http": {
+      "method": "POST",
+      "status_code": 502
+     }
+    },
+    "host": "web-2",
+    "message": "upstream \"orders\" failed",
+    "service": "web",
+    "status": "error",
+    "tags": [
+     "env:prod",
+     "service:web",
+     "source:python"
+    ],
+    "timestamp": "2026-11-01T00:03:00.000Z"
+   },
+   "id": "AQAAAZ0003",
+   "type": "log"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "duration": 400000000
+    },
+    "host": "api-1",
+    "message": "slow query",
+    "service": "api",
+    "status": "warn",
+    "tags": [
+     "env:prod",
+     "service:api",
+     "source:python"
+    ],
+    "timestamp": "2026-11-01T00:04:00.000Z"
+   },
+   "id": "AQAAAZ0004",
+   "type": "log"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "dd": {
+      "trace_id": "7003"
+     }
+    },
+    "host": "api-1",
+    "message": "connection reset",
+    "service": "api",
+    "status": "error",
+    "tags": [
+     "env:prod",
+     "service:api",
+     "source:python",
+     "team:core",
+     "team:platform"
+    ],
+    "timestamp": "2026-11-01T00:05:00.000Z"
+   },
+   "id": "AQAAAZ0005",
+   "type": "log"
+  },
+  {
+   "attributes": {
+    "attributes": {},
+    "host": "api-2",
+    "message": "test failure",
+    "service": "api",
+    "status": "error",
+    "tags": [
+     "env:staging",
+     "service:api",
+     "source:python"
+    ],
+    "timestamp": "2026-11-01T00:06:00.000Z"
+   },
+   "id": "AQAAAZ0006",
+   "type": "log"
+  },
+  {
+   "attributes": {
+    "attributes": {},
+    "host": "lb-1",
+    "message": "200 GET /",
+    "service": "nginx",
+    "status": "info",
+    "tags": [
+     "env:prod",
+     "service:nginx",
+     "source:nginx"
+    ],
+    "timestamp": "2026-11-01T00:07:00.000Z"
+   },
+   "id": "AQAAAZ0007",
+   "type": "log"
+  },
+  {
+   "attributes": {
+    "attributes": {},
+    "host": "web-3",
+    "message": "quoted service name",
+    "service": "o'reilly svc",
+    "status": "error",
+    "tags": [
+     "env:prod",
+     "service:o'reilly svc",
+     "source:python"
+    ],
+    "timestamp": "2026-11-01T00:08:00.000Z"
+   },
+   "id": "AQAAAZ0008",
+   "type": "log"
+  },
+  {
+   "attributes": {
+    "attributes": {},
+    "host": "web-1",
+    "message": "hour later",
+    "service": "web",
+    "status": "info",
+    "tags": [
+     "env:prod",
+     "service:web",
+     "source:python"
+    ],
+    "timestamp": "2026-11-01T01:00:00.000Z"
+   },
+   "id": "AQAAAZ0009",
+   "type": "log"
+  },
+  {
+   "attributes": {
+    "attributes": {
+     "http": {
+      "method": "GET",
+      "status_code": 500
+     }
+    },
+    "host": "web-2",
+    "message": "GET /api/orders 500 again",
+    "service": "web",
+    "status": "error",
+    "tags": [
+     "env:prod",
+     "service:web",
+     "source:python"
+    ],
+    "timestamp": "2026-11-01T01:01:00.000Z"
+   },
+   "id": "AQAAAZ0010",
+   "type": "log"
+  },
+  {
+   "attributes": {
+    "attributes": {},
+    "host": "web-1",
+    "message": "next day",
+    "service": "web",
+    "status": "error",
+    "tags": [
+     "env:prod",
+     "service:web",
+     "source:python"
+    ],
+    "timestamp": "2026-11-02T00:00:00.000Z"
+   },
+   "id": "AQAAAZ0011",
+   "type": "log"
+  },
+  {
+   "attributes": {
+    "attributes": {},
+    "host": "api-1",
+    "message": "next day info",
+    "service": "api",
+    "status": "info",
+    "tags": [
+     "env:prod",
+     "service:api",
+     "source:python"
+    ],
+    "timestamp": "2026-11-02T00:01:00.000Z"
+   },
+   "id": "AQAAAZ0012",
+   "type": "log"
+  }
+ ],
+ "metric_metadata": {
+  "system.cpu.user": {
+   "description": "The percent of time the CPU spent running user space processes.",
+   "integration": "system",
+   "per_unit": null,
+   "short_name": "cpu user",
+   "statsd_interval": null,
+   "type": "gauge",
+   "unit": "percent"
+  },
+  "system.net.bytes_rcvd": {
+   "description": "The number of bytes received on a device per second.",
+   "integration": "system",
+   "per_unit": "second",
+   "short_name": "bytes rcvd",
+   "statsd_interval": null,
+   "type": "gauge",
+   "unit": "byte"
+  }
+ },
+ "metric_queries": {
+  "avg:system.cpu.user{env:prod} by {host}": [
+   {
+    "aggr": "avg",
+    "display_name": "system.cpu.user",
+    "end": 1793494800000,
+    "expression": "avg:system.cpu.user{env:prod,host:web-1}",
+    "interval": 600,
+    "length": 6,
+    "metric": "system.cpu.user",
+    "pointlist": [
+     [
+      1793491200000.0,
+      10.0
+     ],
+     [
+      1793491800000.0,
+      20.0
+     ],
+     [
+      1793492400000.0,
+      30.0
+     ],
+     [
+      1793493000000.0,
+      null
+     ],
+     [
+      1793493600000.0,
+      40.0
+     ],
+     [
+      1793494200000.0,
+      50.0
+     ]
+    ],
+    "query_index": 0,
+    "scope": "env:prod,host:web-1",
+    "start": 1793491200000,
+    "tag_set": [
+     "env:prod",
+     "host:web-1"
+    ],
+    "unit": [
+     {
+      "family": "percentage",
+      "name": "percent",
+      "plural": "percent",
+      "scale_factor": 1.0,
+      "short_name": "%"
+     },
+     null
+    ]
+   },
+   {
+    "aggr": "avg",
+    "display_name": "system.cpu.user",
+    "end": 1793494800000,
+    "expression": "avg:system.cpu.user{env:prod,host:web-2}",
+    "interval": 600,
+    "length": 6,
+    "metric": "system.cpu.user",
+    "pointlist": [
+     [
+      1793491200000.0,
+      5.0
+     ],
+     [
+      1793491800000.0,
+      5.0
+     ],
+     [
+      1793492400000.0,
+      5.0
+     ],
+     [
+      1793493000000.0,
+      5.0
+     ],
+     [
+      1793493600000.0,
+      5.0
+     ],
+     [
+      1793494200000.0,
+      5.0
+     ]
+    ],
+    "query_index": 0,
+    "scope": "env:prod,host:web-2",
+    "start": 1793491200000,
+    "tag_set": [
+     "env:prod",
+     "host:web-2"
+    ],
+    "unit": [
+     {
+      "family": "percentage",
+      "name": "percent",
+      "plural": "percent",
+      "scale_factor": 1.0,
+      "short_name": "%"
+     },
+     null
+    ]
+   }
+  ],
+  "avg:system.load.1{*}, max:system.load.1{*}": [
+   {
+    "aggr": "avg",
+    "display_name": "system.load.1",
+    "end": 1793494800000,
+    "expression": "avg:system.load.1{*}",
+    "interval": 600,
+    "length": 6,
+    "metric": "system.load.1",
+    "pointlist": [
+     [
+      1793491200000.0,
+      1.0
+     ],
+     [
+      1793491800000.0,
+      2.0
+     ],
+     [
+      1793492400000.0,
+      3.0
+     ],
+     [
+      1793493000000.0,
+      2.0
+     ],
+     [
+      1793493600000.0,
+      1.0
+     ],
+     [
+      1793494200000.0,
+      1.0
+     ]
+    ],
+    "query_index": 0,
+    "scope": "*",
+    "start": 1793491200000,
+    "tag_set": [],
+    "unit": [
+     {
+      "family": "percentage",
+      "name": "percent",
+      "plural": "percent",
+      "scale_factor": 1.0,
+      "short_name": "%"
+     },
+     null
+    ]
+   },
+   {
+    "aggr": "max",
+    "display_name": "system.load.1",
+    "end": 1793494800000,
+    "expression": "max:system.load.1{*}",
+    "interval": 600,
+    "length": 6,
+    "metric": "system.load.1",
+    "pointlist": [
+     [
+      1793491200000.0,
+      2.5
+     ],
+     [
+      1793491800000.0,
+      4.0
+     ],
+     [
+      1793492400000.0,
+      3.5
+     ],
+     [
+      1793493000000.0,
+      2.0
+     ],
+     [
+      1793493600000.0,
+      1.5
+     ],
+     [
+      1793494200000.0,
+      1.0
+     ]
+    ],
+    "query_index": 1,
+    "scope": "*",
+    "start": 1793491200000,
+    "tag_set": [],
+    "unit": [
+     {
+      "family": "percentage",
+      "name": "percent",
+      "plural": "percent",
+      "scale_factor": 1.0,
+      "short_name": "%"
+     },
+     null
+    ]
+   }
+  ],
+  "sum:trace.http.request.hits{service:web}.as_count()": [
+   {
+    "aggr": "sum",
+    "display_name": "trace.http.request.hits",
+    "end": 1793494800000,
+    "expression": "sum:trace.http.request.hits{service:web}",
+    "interval": 600,
+    "length": 6,
+    "metric": "trace.http.request.hits",
+    "pointlist": [
+     [
+      1793491200000.0,
+      100.0
+     ],
+     [
+      1793491800000.0,
+      120.0
+     ],
+     [
+      1793492400000.0,
+      90.0
+     ],
+     [
+      1793493000000.0,
+      110.0
+     ],
+     [
+      1793493600000.0,
+      130.0
+     ],
+     [
+      1793494200000.0,
+      150.0
+     ]
+    ],
+    "query_index": 0,
+    "scope": "service:web",
+    "start": 1793491200000,
+    "tag_set": [
+     "service:web"
+    ],
+    "unit": [
+     {
+      "family": "percentage",
+      "name": "percent",
+      "plural": "percent",
+      "scale_factor": 1.0,
+      "short_name": "%"
+     },
+     null
+    ]
+   }
+  ]
+ },
+ "metric_tags": {
+  "system.cpu.user": [
+   "host:web-1",
+   "host:web-2",
+   "env:prod",
+   "env:staging",
+   "availability-zone:us-east-1a",
+   "env:prod"
+  ]
+ },
+ "metrics": [
+  {
+   "id": "system.cpu.user",
+   "type": "metrics"
+  },
+  {
+   "id": "system.load.1",
+   "type": "metrics"
+  },
+  {
+   "attributes": {
+    "created_at": "2026-01-02T03:04:05Z",
+    "metric_type": "count",
+    "modified_at": "2026-06-01T00:00:00Z",
+    "tags": [
+     "service",
+     "env"
+    ]
+   },
+   "id": "trace.http.request.hits",
+   "type": "manage_tags"
+  },
+  {
+   "attributes": {
+    "created_at": "2026-02-01T00:00:00Z",
+    "include_percentiles": true,
+    "metric_type": "distribution",
+    "modified_at": "2026-02-01T00:00:00Z",
+    "tags": [
+     "service",
+     "region"
+    ]
+   },
+   "id": "checkout.latency",
+   "type": "manage_tags"
+  },
+  {
+   "id": "system.net.bytes_rcvd",
+   "type": "metrics"
+  }
+ ],
+ "monitors": [
+  {
+   "created": "2026-03-01T10:00:00.000000+00:00",
+   "creator": {
+    "email": "ada@example.com",
+    "handle": "ada@example.com",
+    "name": "Ada"
+   },
+   "id": 1001,
+   "message": "Notify @slack-ops",
+   "modified": "2026-10-01T10:00:00.000000+00:00",
+   "multi": true,
+   "name": "High error rate",
+   "options": {
+    "notify_no_data": false,
+    "thresholds": {
+     "critical": 1.0
+    }
+   },
+   "overall_state": "Alert",
+   "priority": 1,
+   "query": "avg(last_5m):avg:high.error.rate{*} > 1",
+   "state": {
+    "groups": {
+     "host:web-1": {
+      "last_nodata_ts": null,
+      "last_notified_ts": 1793491330,
+      "last_resolved_ts": null,
+      "last_triggered_ts": 1793491320,
+      "name": "host:web-1",
+      "status": "Alert"
+     },
+     "host:web-2": {
+      "last_nodata_ts": null,
+      "last_notified_ts": null,
+      "last_resolved_ts": 1793411200,
+      "last_triggered_ts": 1793404800,
+      "name": "host:web-2",
+      "status": "OK"
+     }
+    }
+   },
+   "tags": [
+    "team:core",
+    "service:web"
+   ],
+   "type": "metric alert"
+  },
+  {
+   "created": "2026-03-01T10:00:00.000000+00:00",
+   "creator": {
+    "email": "ada@example.com",
+    "handle": "ada@example.com",
+    "name": "Ada"
+   },
+   "id": 1002,
+   "message": "Notify @slack-ops",
+   "modified": "2026-10-01T10:00:00.000000+00:00",
+   "multi": false,
+   "name": "Disk almost full",
+   "options": {
+    "notify_no_data": false,
+    "thresholds": {
+     "critical": 1.0
+    }
+   },
+   "overall_state": "OK",
+   "priority": 3,
+   "query": "avg(last_5m):avg:disk.almost.full{*} > 1",
+   "state": {
+    "groups": {
+     "*": {
+      "last_nodata_ts": null,
+      "last_notified_ts": null,
+      "last_resolved_ts": null,
+      "last_triggered_ts": null,
+      "name": "*",
+      "status": "OK"
+     }
+    }
+   },
+   "tags": [
+    "team:platform"
+   ],
+   "type": "metric alert"
+  },
+  {
+   "created": "2026-03-01T10:00:00.000000+00:00",
+   "creator": {
+    "email": "ada@example.com",
+    "handle": "ada@example.com",
+    "name": "Ada"
+   },
+   "id": 1003,
+   "message": "Notify @slack-ops",
+   "modified": "2026-10-01T10:00:00.000000+00:00",
+   "multi": false,
+   "name": "API latency",
+   "options": {
+    "notify_no_data": false,
+    "thresholds": {
+     "critical": 1.0
+    }
+   },
+   "overall_state": "Warn",
+   "priority": 2,
+   "query": "avg(last_5m):avg:api.latency{*} > 1",
+   "state": {
+    "groups": {
+     "*": {
+      "last_nodata_ts": null,
+      "last_notified_ts": null,
+      "last_resolved_ts": null,
+      "last_triggered_ts": null,
+      "name": "*",
+      "status": "Warn"
+     }
+    }
+   },
+   "tags": [
+    "team:core",
+    "service:api"
+   ],
+   "type": "query alert"
+  },
+  {
+   "created": "2026-03-01T10:00:00.000000+00:00",
+   "creator": {
+    "email": "ada@example.com",
+    "handle": "ada@example.com",
+    "name": "Ada"
+   },
+   "id": 1004,
+   "message": "Notify @slack-ops",
+   "modified": "2026-10-01T10:00:00.000000+00:00",
+   "multi": false,
+   "name": "Log errors",
+   "options": {
+    "notify_no_data": false,
+    "thresholds": {
+     "critical": 1.0
+    }
+   },
+   "overall_state": "Alert",
+   "priority": null,
+   "query": "avg(last_5m):avg:log.errors{*} > 1",
+   "state": {
+    "groups": {
+     "env:prod,service:api": {
+      "last_nodata_ts": null,
+      "last_notified_ts": 1793491510,
+      "last_resolved_ts": null,
+      "last_triggered_ts": 1793491500,
+      "name": "env:prod,service:api",
+      "status": "Alert"
+     }
+    }
+   },
+   "tags": [
+    "team:platform",
+    "service:api"
+   ],
+   "type": "log alert"
+  },
+  {
+   "created": "2026-03-01T10:00:00.000000+00:00",
+   "creator": {
+    "email": "ada@example.com",
+    "handle": "ada@example.com",
+    "name": "Ada"
+   },
+   "id": 1005,
+   "message": "Notify @slack-ops",
+   "modified": "2026-10-01T10:00:00.000000+00:00",
+   "multi": false,
+   "name": "Heartbeat",
+   "options": {
+    "notify_no_data": false,
+    "thresholds": {
+     "critical": 1.0
+    }
+   },
+   "overall_state": "No Data",
+   "priority": 5,
+   "query": "avg(last_5m):avg:heartbeat{*} > 1",
+   "state": {
+    "groups": {
+     "*": {
+      "last_nodata_ts": null,
+      "last_notified_ts": null,
+      "last_resolved_ts": null,
+      "last_triggered_ts": null,
+      "name": "*",
+      "status": "No Data"
+     }
+    }
+   },
+   "tags": [],
+   "type": "service check"
+  }
+ ],
+ "roles": [
+  {
+   "attributes": {
+    "created_at": "2023-01-01T00:00:00.000000+00:00",
+    "modified_at": "2023-01-01T00:00:00.000000+00:00",
+    "name": "Datadog Admin Role",
+    "user_count": 1
+   },
+   "id": "r-admin",
+   "type": "roles"
+  },
+  {
+   "attributes": {
+    "created_at": "2023-01-01T00:00:00.000000+00:00",
+    "modified_at": "2023-01-01T00:00:00.000000+00:00",
+    "name": "Datadog Standard Role",
+    "user_count": 2
+   },
+   "id": "r-std",
+   "type": "roles"
+  },
+  {
+   "attributes": {
+    "created_at": "2023-01-01T00:00:00.000000+00:00",
+    "modified_at": "2023-01-01T00:00:00.000000+00:00",
+    "name": "Datadog Read Only Role",
+    "user_count": 2
+   },
+   "id": "r-ro",
+   "type": "roles"
+  }
+ ],
+ "services": [
+  {
+   "attributes": {
+    "meta": {
+     "github-html-url": "https://github.com/example/web",
+     "ingestion-source": "github",
+     "last-modified-time": "2026-09-01T00:00:00Z"
+    },
+    "schema": {
+     "application": "shop",
+     "contacts": [
+      {
+       "contact": "https://example.slack.com/archives/C1",
+       "type": "slack"
+      }
+     ],
+     "dd-service": "web",
+     "description": "The web service",
+     "languages": [
+      "python"
+     ],
+     "lifecycle": "production",
+     "links": [
+      {
+       "name": "Runbook",
+       "type": "runbook",
+       "url": "https://wiki.example/runbook"
+      }
+     ],
+     "schema-version": "v2.2",
+     "tags": [
+      "service:web",
+      "business-unit:retail"
+     ],
+     "team": "core",
+     "tier": "1",
+     "type": "web"
+    }
+   },
+   "id": "sd-web",
+   "type": "service-definition"
+  },
+  {
+   "attributes": {
+    "meta": {
+     "github-html-url": "https://github.com/example/api",
+     "ingestion-source": "github",
+     "last-modified-time": "2026-09-01T00:00:00Z"
+    },
+    "schema": {
+     "application": "shop",
+     "contacts": [
+      {
+       "contact": "https://example.slack.com/archives/C1",
+       "type": "slack"
+      }
+     ],
+     "dd-service": "api",
+     "description": "The api service",
+     "languages": [
+      "go"
+     ],
+     "lifecycle": "production",
+     "links": [
+      {
+       "name": "Runbook",
+       "type": "runbook",
+       "url": "https://wiki.example/runbook"
+      }
+     ],
+     "schema-version": "v2.2",
+     "tags": [
+      "service:api",
+      "business-unit:retail"
+     ],
+     "team": "platform",
+     "tier": "1",
+     "type": "web"
+    }
+   },
+   "id": "sd-api",
+   "type": "service-definition"
+  },
+  {
+   "attributes": {
+    "meta": {
+     "github-html-url": "https://github.com/example/checkout",
+     "ingestion-source": "github",
+     "last-modified-time": "2026-09-01T00:00:00Z"
+    },
+    "schema": {
+     "application": "shop",
+     "contacts": [
+      {
+       "contact": "https://example.slack.com/archives/C1",
+       "type": "slack"
+      }
+     ],
+     "dd-service": "checkout",
+     "description": "The checkout service",
+     "languages": [
+      "java"
+     ],
+     "lifecycle": "production",
+     "links": [
+      {
+       "name": "Runbook",
+       "type": "runbook",
+       "url": "https://wiki.example/runbook"
+      }
+     ],
+     "schema-version": "v2.2",
+     "tags": [
+      "service:checkout",
+      "business-unit:retail"
+     ],
+     "team": "core",
+     "tier": "2",
+     "type": "web"
+    }
+   },
+   "id": "sd-checkout",
+   "type": "service-definition"
+  },
+  {
+   "attributes": {
+    "meta": {
+     "github-html-url": "https://github.com/example/legacy-batch",
+     "ingestion-source": "github",
+     "last-modified-time": "2026-09-01T00:00:00Z"
+    },
+    "schema": {
+     "application": "shop",
+     "contacts": [
+      {
+       "contact": "https://example.slack.com/archives/C1",
+       "type": "slack"
+      }
+     ],
+     "dd-service": "legacy-batch",
+     "description": "The legacy-batch service",
+     "languages": [
+      "python"
+     ],
+     "lifecycle": "deprecated",
+     "links": [
+      {
+       "name": "Runbook",
+       "type": "runbook",
+       "url": "https://wiki.example/runbook"
+      }
+     ],
+     "schema-version": "v2.2",
+     "tags": [
+      "service:legacy-batch",
+      "business-unit:retail"
+     ],
+     "tier": "3",
+     "type": "web"
+    }
+   },
+   "id": "sd-legacy-batch",
+   "type": "service-definition"
+  }
+ ],
+ "slo_history": {
+  "abc123def456": {
+   "groups": [],
+   "overall": {
+    "name": "Web availability",
+    "precision": {
+     "30d": 2
+    },
+    "sli_value": 99.95,
+    "span_precision": 2
+   },
+   "series": {
+    "denominator": {
+     "sum": 200000.0
+    },
+    "numerator": {
+     "sum": 199900.0
+    }
+   },
+   "thresholds": {
+    "30d": {
+     "target": 99.9,
+     "timeframe": "30d",
+     "warning": 99.95
+    }
+   },
+   "type": "metric"
+  },
+  "fed987cba654": {
+   "groups": [
+    {
+     "name": "env:prod,service:api",
+     "sli_value": 98.0
+    },
+    {
+     "name": "env:staging,service:api",
+     "sli_value": 99.5
+    }
+   ],
+   "overall": {
+    "name": "API uptime",
+    "sli_value": 98.5
+   },
+   "thresholds": {
+    "7d": {
+     "target": 99.0,
+     "timeframe": "7d"
+    }
+   },
+   "type": "monitor"
+  }
+ },
+ "slos": [
+  {
+   "created_at": 1776211200,
+   "creator": {
+    "email": "ada@example.com"
+   },
+   "description": "Good requests over all requests",
+   "id": "abc123def456",
+   "modified_at": 1792627200,
+   "monitor_ids": [],
+   "name": "Web availability",
+   "query": {
+    "denominator": "sum:requests{service:web}.as_count()",
+    "numerator": "sum:requests.ok{service:web}.as_count()"
+   },
+   "tags": [
+    "team:core",
+    "service:web"
+   ],
+   "thresholds": [
+    {
+     "target": 99.9,
+     "timeframe": "30d",
+     "warning": 99.95
+    },
+    {
+     "target": 99.5,
+     "timeframe": "7d"
+    }
+   ],
+   "type": "metric"
+  },
+  {
+   "created_at": 1784851200,
+   "creator": {
+    "email": "grace@example.com"
+   },
+   "description": null,
+   "id": "fed987cba654",
+   "modified_at": 1793059200,
+   "monitor_ids": [
+    1003,
+    1004
+   ],
+   "name": "API uptime",
+   "query": null,
+   "tags": [
+    "team:platform"
+   ],
+   "thresholds": [
+    {
+     "target": 99.0,
+     "timeframe": "7d"
+    }
+   ],
+   "type": "monitor"
+  },
+  {
+   "created_at": 1789171200,
+   "creator": null,
+   "description": "p95 under 300ms",
+   "id": "aaa111bbb222",
+   "modified_at": 1789171200,
+   "monitor_ids": [],
+   "name": "Checkout latency",
+   "query": null,
+   "tags": [],
+   "thresholds": [
+    {
+     "target": 95.0,
+     "timeframe": "90d"
+    }
+   ],
+   "type": "time_slice"
+  }
+ ],
+ "spans": [
+  {
+   "attributes": {
+    "custom": {
+     "duration": 12000000,
+     "http": {
+      "method": "GET"
+     },
+     "operation_name": "http.request"
+    },
+    "end_timestamp": "2026-11-01T00:01:00.012Z",
+    "env": "prod",
+    "host": "web-1",
+    "parent_id": "0",
+    "resource_name": "GET /api/users",
+    "service": "web",
+    "span_id": "9001",
+    "start_timestamp": "2026-11-01T00:01:00.000Z",
+    "status": "ok",
+    "tags": [
+     "env:prod",
+     "service:web",
+     "version:1.4.2"
+    ],
+    "trace_id": "7001",
+    "type": "web"
+   },
+   "id": "span-1",
+   "type": "spans"
+  },
+  {
+   "attributes": {
+    "custom": {
+     "duration": 950000000,
+     "http": {
+      "method": "GET"
+     },
+     "operation_name": "http.request"
+    },
+    "end_timestamp": "2026-11-01T00:02:00.950Z",
+    "env": "prod",
+    "host": "web-1",
+    "parent_id": "0",
+    "resource_name": "GET /api/orders",
+    "service": "web",
+    "span_id": "9002",
+    "start_timestamp": "2026-11-01T00:02:00.000Z",
+    "status": "error",
+    "tags": [
+     "env:prod",
+     "service:web",
+     "version:1.4.2"
+    ],
+    "trace_id": "7001",
+    "type": "web"
+   },
+   "id": "span-2",
+   "type": "spans"
+  },
+  {
+   "attributes": {
+    "custom": {
+     "duration": 410000000,
+     "http": {
+      "method": "SELECT"
+     },
+     "operation_name": "http.request"
+    },
+    "end_timestamp": "2026-11-01T00:05:00.410Z",
+    "env": "prod",
+    "host": "api-1",
+    "parent_id": "0",
+    "resource_name": "SELECT orders",
+    "service": "api",
+    "span_id": "9003",
+    "start_timestamp": "2026-11-01T00:05:00.000Z",
+    "status": "error",
+    "tags": [
+     "env:prod",
+     "service:api",
+     "version:1.4.2"
+    ],
+    "trace_id": "7003",
+    "type": "web"
+   },
+   "id": "span-3",
+   "type": "spans"
+  },
+  {
+   "attributes": {
+    "custom": {
+     "duration": 4000000,
+     "http": {
+      "method": "SELECT"
+     },
+     "operation_name": "http.request"
+    },
+    "end_timestamp": "2026-11-01T00:05:10.004Z",
+    "env": "prod",
+    "host": "api-1",
+    "parent_id": "9003",
+    "resource_name": "SELECT users",
+    "service": "api",
+    "span_id": "9004",
+    "start_timestamp": "2026-11-01T00:05:10.000Z",
+    "status": "ok",
+    "tags": [
+     "env:prod",
+     "service:api",
+     "version:1.4.2"
+    ],
+    "trace_id": "7003",
+    "type": "web"
+   },
+   "id": "span-4",
+   "type": "spans"
+  },
+  {
+   "attributes": {
+    "custom": {
+     "duration": 20000000,
+     "http": {
+      "method": "GET"
+     },
+     "operation_name": "http.request"
+    },
+    "end_timestamp": "2026-11-01T00:06:40.020Z",
+    "env": "prod",
+    "host": "web-1",
+    "parent_id": "0",
+    "resource_name": "GET /api/users",
+    "service": "web",
+    "span_id": "9005",
+    "start_timestamp": "2026-11-01T00:06:40.000Z",
+    "status": "ok",
+    "tags": [
+     "env:prod",
+     "service:web",
+     "version:1.4.2"
+    ],
+    "trace_id": "7005",
+    "type": "web"
+   },
+   "id": "span-5",
+   "type": "spans"
+  },
+  {
+   "attributes": {
+    "custom": {
+     "duration": 140000000,
+     "http": {
+      "method": "POST"
+     },
+     "operation_name": "http.request"
+    },
+    "end_timestamp": "2026-11-01T00:08:20.140Z",
+    "env": "prod",
+    "host": "web-1",
+    "parent_id": "0",
+    "resource_name": "POST /api/orders",
+    "service": "web",
+    "span_id": "9006",
+    "start_timestamp": "2026-11-01T00:08:20.000Z",
+    "status": "ok",
+    "tags": [
+     "env:prod",
+     "service:web",
+     "version:1.4.2"
+    ],
+    "trace_id": "7006",
+    "type": "web"
+   },
+   "id": "span-6",
+   "type": "spans"
+  },
+  {
+   "attributes": {
+    "custom": {
+     "duration": 1800000000,
+     "http": {
+      "method": "GET"
+     },
+     "operation_name": "http.request"
+    },
+    "end_timestamp": "2026-11-01T00:10:01.800Z",
+    "env": "staging",
+    "host": "web-1",
+    "parent_id": "0",
+    "resource_name": "GET /api/orders",
+    "service": "web",
+    "span_id": "9007",
+    "start_timestamp": "2026-11-01T00:10:00.000Z",
+    "status": "ok",
+    "tags": [
+     "env:staging",
+     "service:web",
+     "version:1.4.2"
+    ],
+    "trace_id": "7007",
+    "type": "web"
+   },
+   "id": "span-7",
+   "type": "spans"
+  }
+ ],
+ "synthetics": [
+  {
+   "config": {
+    "assertions": [
+     {
+      "operator": "is",
+      "target": 200,
+      "type": "statusCode"
+     }
+    ],
+    "request": {
+     "method": "GET",
+     "url": "https://shop.example/"
+    }
+   },
+   "creator": {
+    "email": "ada@example.com"
+   },
+   "locations": [
+    "aws:us-east-1",
+    "aws:eu-central-1"
+   ],
+   "message": "@slack-ops",
+   "monitor_id": 2001,
+   "name": "Homepage up",
+   "options": {
+    "tick_every": 300
+   },
+   "public_id": "abc-123-xyz",
+   "status": "live",
+   "subtype": "http",
+   "tags": [
+    "team:core",
+    "env:prod"
+   ],
+   "type": "api"
+  },
+  {
+   "config": {
+    "request": {
+     "url": "https://shop.example/checkout"
+    }
+   },
+   "creator": {
+    "email": "grace@example.com"
+   },
+   "locations": [
+    "aws:us-east-1"
+   ],
+   "message": "",
+   "monitor_id": 2002,
+   "name": "Checkout flow",
+   "options": {
+    "tick_every": 900
+   },
+   "public_id": "def-456-uvw",
+   "status": "live",
+   "subtype": null,
+   "tags": [
+    "team:core"
+   ],
+   "type": "browser"
+  },
+  {
+   "config": {
+    "request": {
+     "host": "shop.example"
+    }
+   },
+   "creator": {
+    "email": "ada@example.com"
+   },
+   "locations": [
+    "aws:eu-central-1"
+   ],
+   "message": "",
+   "monitor_id": 2003,
+   "name": "DNS check",
+   "options": {
+    "tick_every": 3600
+   },
+   "public_id": "ghi-789-rst",
+   "status": "paused",
+   "subtype": "dns",
+   "tags": [],
+   "type": "api"
+  }
+ ],
+ "synthetics_results": {
+  "abc-123-xyz": [
+   {
+    "check_time": 1793491500000.0,
+    "probe_dc": "aws:us-east-1",
+    "result": {
+     "httpStatusCode": 200,
+     "passed": true,
+     "timings": {
+      "total": 120.5
+     }
+    },
+    "result_id": "r1",
+    "status": 0
+   },
+   {
+    "check_time": 1793491500000.0,
+    "probe_dc": "aws:eu-central-1",
+    "result": {
+     "httpStatusCode": 200,
+     "passed": true,
+     "timings": {
+      "total": 210.0
+     }
+    },
+    "result_id": "r2",
+    "status": 0
+   },
+   {
+    "check_time": 1793491800000.0,
+    "probe_dc": "aws:us-east-1",
+    "result": {
+     "httpStatusCode": 503,
+     "passed": false,
+     "timings": {
+      "total": 5000.0
+     }
+    },
+    "result_id": "r3",
+    "status": 1
+   },
+   {
+    "check_time": 1793491800000.0,
+    "probe_dc": "aws:eu-central-1",
+    "result": {
+     "httpStatusCode": 200,
+     "passed": true,
+     "timings": {
+      "total": 190.0
+     }
+    },
+    "result_id": "r4",
+    "status": 0
+   },
+   {
+    "check_time": 1793581200000.0,
+    "probe_dc": "aws:us-east-1",
+    "result": {
+     "httpStatusCode": 200,
+     "passed": true,
+     "timings": {
+      "total": 100.0
+     }
+    },
+    "result_id": "r5",
+    "status": 0
+   }
+  ],
+  "def-456-uvw": [
+   {
+    "check_time": 1793492100000.0,
+    "probe_dc": "aws:us-east-1",
+    "result": {
+     "duration": 8400.0,
+     "passed": true
+    },
+    "result_id": "b1",
+    "status": 0
+   },
+   {
+    "check_time": 1793493000000.0,
+    "probe_dc": "aws:us-east-1",
+    "result": {
+     "duration": 30000.0,
+     "passed": false
+    },
+    "result_id": "b2",
+    "status": 1
+   }
+  ]
+ },
+ "teams": [
+  {
+   "attributes": {
+    "created_at": "2024-01-01T00:00:00.000000+00:00",
+    "description": "## Core",
+    "handle": "core",
+    "link_count": 2,
+    "modified_at": "2026-01-01T00:00:00.000000+00:00",
+    "name": "Core",
+    "summary": "Web and checkout",
+    "user_count": 6
+   },
+   "id": "t-1",
+   "type": "team"
+  },
+  {
+   "attributes": {
+    "created_at": "2024-01-01T00:00:00.000000+00:00",
+    "description": null,
+    "handle": "platform",
+    "link_count": 0,
+    "modified_at": "2026-01-01T00:00:00.000000+00:00",
+    "name": "Platform",
+    "summary": "Infra",
+    "user_count": 4
+   },
+   "id": "t-2",
+   "type": "team"
+  },
+  {
+   "attributes": {
+    "created_at": "2026-05-01T00:00:00.000000+00:00",
+    "description": null,
+    "handle": "data",
+    "link_count": 0,
+    "modified_at": "2026-05-01T00:00:00.000000+00:00",
+    "name": "Data",
+    "summary": null,
+    "user_count": 0
+   },
+   "id": "t-3",
+   "type": "team"
+  }
+ ],
+ "usage": [
+  {
+   "apm_host_top99p": 12,
+   "billing_plan": "pro",
+   "date": "2026-09-01T00:00:00+00:00",
+   "infra_host_top99p": 40,
+   "ingested_events_bytes_sum": 95000000000.0,
+   "logs_indexed_logs_usage_sum": 1500000,
+   "orgs": []
+  },
+  {
+   "apm_host_top99p": 13,
+   "billing_plan": "pro",
+   "date": "2026-10-01T00:00:00+00:00",
+   "infra_host_top99p": 44,
+   "ingested_events_bytes_sum": 110000000000.0,
+   "logs_indexed_logs_usage_sum": 1750000,
+   "orgs": []
+  }
+ ],
+ "users": [
+  {
+   "attributes": {
+    "created_at": "2024-01-01T00:00:00.000000+00:00",
+    "disabled": false,
+    "email": "ada@example.com",
+    "handle": "ada@example.com",
+    "mfa_enabled": true,
+    "modified_at": "2026-01-01T00:00:00.000000+00:00",
+    "name": "Ada",
+    "service_account": false,
+    "status": "Active",
+    "title": "SRE",
+    "verified": true
+   },
+   "id": "u-1",
+   "relationships": {
+    "roles": {
+     "data": [
+      {
+       "id": "r-admin",
+       "type": "roles"
+      }
+     ]
+    }
+   },
+   "type": "users"
+  },
+  {
+   "attributes": {
+    "created_at": "2024-02-01T00:00:00.000000+00:00",
+    "disabled": false,
+    "email": "grace@example.com",
+    "handle": "grace@example.com",
+    "mfa_enabled": false,
+    "modified_at": "2026-02-01T00:00:00.000000+00:00",
+    "name": "Grace",
+    "service_account": false,
+    "status": "Active",
+    "title": "Engineer",
+    "verified": true
+   },
+   "id": "u-2",
+   "relationships": {
+    "roles": {
+     "data": [
+      {
+       "id": "r-std",
+       "type": "roles"
+      }
+     ]
+    }
+   },
+   "type": "users"
+  },
+  {
+   "attributes": {
+    "created_at": "2025-01-01T00:00:00.000000+00:00",
+    "disabled": false,
+    "email": "ci@example.com",
+    "handle": "ci@example.com",
+    "mfa_enabled": false,
+    "modified_at": "2025-01-01T00:00:00.000000+00:00",
+    "name": "CI bot",
+    "service_account": true,
+    "status": "Active",
+    "title": null,
+    "verified": true
+   },
+   "id": "u-3",
+   "relationships": {
+    "roles": {
+     "data": [
+      {
+       "id": "r-ro",
+       "type": "roles"
+      }
+     ]
+    }
+   },
+   "type": "users"
+  },
+  {
+   "attributes": {
+    "created_at": "2026-10-30T00:00:00.000000+00:00",
+    "disabled": false,
+    "email": "linus@example.com",
+    "handle": "linus@example.com",
+    "mfa_enabled": false,
+    "modified_at": "2026-10-30T00:00:00.000000+00:00",
+    "name": "Linus",
+    "service_account": false,
+    "status": "Pending",
+    "title": null,
+    "verified": false
+   },
+   "id": "u-4",
+   "relationships": {
+    "roles": {
+     "data": [
+      {
+       "id": "r-std",
+       "type": "roles"
+      },
+      {
+       "id": "r-ro",
+       "type": "roles"
+      }
+     ]
+    }
+   },
+   "type": "users"
+  },
+  {
+   "attributes": {
+    "created_at": "2023-01-01T00:00:00.000000+00:00",
+    "disabled": true,
+    "email": "old@example.com",
+    "handle": "old@example.com",
+    "mfa_enabled": false,
+    "modified_at": "2024-01-01T00:00:00.000000+00:00",
+    "name": "Old",
+    "service_account": false,
+    "status": "Disabled",
+    "title": null,
+    "verified": true
+   },
+   "id": "u-5",
+   "relationships": {
+    "roles": {
+     "data": []
+    }
+   },
+   "type": "users"
+  }
+ ]
+}

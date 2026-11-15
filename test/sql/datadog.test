@@ -1,0 +1,309 @@
+# name: test/sql/datadog.test
+# description: Datadog telemetry (metrics, logs, spans, events, audit, aggregates) through DuckDB against the strict mock (test/mock_api)
+# group: [datadog]
+
+require vgi
+
+require-env DATADOG_WORKER
+
+require-env DATADOG_MOCK_API
+
+statement ok
+LOAD json;
+
+statement ok
+ATTACH 'datadog' (TYPE vgi, LOCATION '{DATADOG_WORKER}');
+
+# No secret yet: a clear error naming CREATE SECRET.
+statement error
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00');
+----
+<REGEX>:.*CREATE SECRET.*
+
+# PAGE_SIZE 2 forces several cursor pages on every search.
+statement ok
+CREATE SECRET dd (TYPE datadog, API_KEY 'fixture-api-key', APP_KEY 'fixture-app-key', BASE_URL '{DATADOG_MOCK_API}', PAGE_SIZE 2);
+
+# ------------------------------------------------------------------ metrics_query
+
+query TTTRTI
+SELECT metric, tags['host'], ts, value, scope, interval_seconds FROM datadog.main.metrics_query('avg:system.cpu.user{env:prod} by {host}', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 00:30:00+00') ORDER BY ALL;
+----
+system.cpu.user	web-1	2026-11-01 00:00:00+00	10.0	env:prod,host:web-1	600
+system.cpu.user	web-1	2026-11-01 00:10:00+00	20.0	env:prod,host:web-1	600
+system.cpu.user	web-1	2026-11-01 00:20:00+00	30.0	env:prod,host:web-1	600
+system.cpu.user	web-1	2026-11-01 00:30:00+00	NULL	env:prod,host:web-1	600
+system.cpu.user	web-2	2026-11-01 00:00:00+00	5.0	env:prod,host:web-2	600
+system.cpu.user	web-2	2026-11-01 00:10:00+00	5.0	env:prod,host:web-2	600
+system.cpu.user	web-2	2026-11-01 00:20:00+00	5.0	env:prod,host:web-2	600
+system.cpu.user	web-2	2026-11-01 00:30:00+00	5.0	env:prod,host:web-2	600
+
+# Typed long format: MAP tags, TIMESTAMPTZ ts, DOUBLE value.
+query TTT
+SELECT typeof(tags), typeof(ts), typeof(value) FROM datadog.main.metrics_query('avg:system.cpu.user{env:prod} by {host}', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 01:00:00+00') LIMIT 1;
+----
+MAP(VARCHAR, VARCHAR)	TIMESTAMP WITH TIME ZONE	DOUBLE
+
+query TR
+SELECT tags['host'] AS host, avg(value) AS avg_cpu FROM datadog.main.metrics_query('avg:system.cpu.user{env:prod} by {host}', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 01:00:00+00') GROUP BY host ORDER BY avg_cpu DESC;
+----
+web-1	30.0
+web-2	5.0
+
+# Comma-separated queries: query_index and aggr tell them apart; an ungrouped series has empty tags.
+query ITIR
+SELECT query_index, aggr, cardinality(tags), max(value) FROM datadog.main.metrics_query('avg:system.load.1{*}, max:system.load.1{*}', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 01:00:00+00') GROUP BY ALL ORDER BY 1;
+----
+0	avg	0	3.0
+1	max	0	4.0
+
+# The long format UNIONs with other metric workers' (metric, labels, ts, value) rows.
+query TI
+SELECT metric, count(*) FROM (SELECT metric, tags AS labels, ts, value FROM datadog.main.metrics_query('avg:system.cpu.user{env:prod} by {host}', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 01:00:00+00') UNION ALL BY NAME SELECT 'prom_up' AS metric, MAP {'job': 'node'} AS labels, TIMESTAMPTZ '2026-11-01 00:00:00+00' AS ts, 1.0 AS value) GROUP BY metric ORDER BY metric;
+----
+prom_up	1
+system.cpu.user	12
+
+# Datadog's query errors come back as SQL errors.
+statement error
+SELECT * FROM datadog.main.metrics_query('avg:system.cpu.user{env:prod', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 01:00:00+00');
+----
+<REGEX>:.*HTTP 400.*Error parsing query.*
+
+# An empty window returns no rows without a request.
+query I
+SELECT count(*) FROM datadog.main.metrics_query('avg:system.cpu.user{*}', TIMESTAMPTZ '2026-11-01 01:00:00+00', TIMESTAMPTZ '2026-11-01 00:00:00+00');
+----
+0
+
+# ------------------------------------------------------------------ metrics / metadata / tags
+
+query TTTT
+SELECT metric, has_tag_configuration, metric_type, configured_tags FROM datadog.main.metrics ORDER BY metric;
+----
+checkout.latency	true	distribution	[service, region]
+system.cpu.user	false	NULL	NULL
+system.load.1	false	NULL	NULL
+system.net.bytes_rcvd	false	NULL	NULL
+trace.http.request.hits	true	count	[service, env]
+
+query TTTT
+SELECT type, unit, per_unit, integration FROM datadog.main.metric_metadata('system.net.bytes_rcvd');
+----
+gauge	byte	second	system
+
+statement error
+SELECT * FROM datadog.main.metric_metadata('no.such.metric');
+----
+<REGEX>:.*HTTP 404.*
+
+# Duplicate tags are reported once.
+query TI
+SELECT key, count(*) FROM datadog.main.metric_tags('system.cpu.user') GROUP BY key ORDER BY key;
+----
+availability-zone	1
+env	2
+host	2
+
+# ------------------------------------------------------------------ logs
+
+# 10 logs fall in [from, to): the one at exactly 2026-11-02 00:00 is excluded (to is exclusive).
+query II
+SELECT count(*), count(DISTINCT id) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00');
+----
+10	10
+
+query TI
+SELECT service, count(*) AS errors FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE status = 'error' AND env = 'prod' GROUP BY service ORDER BY errors DESC, service;
+----
+web	3
+api	1
+o'reilly svc	1
+
+# Hoisted fields, tags map (repeated keys joined) and attributes JSON.
+query TTTTTT
+SELECT ts, host, env, source, trace_id, tags['team'] FROM datadog.main.logs('service:api', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE status = 'error' AND env = 'prod';
+----
+2026-11-01 00:05:00+00	api-1	prod	python	7003	core,platform
+
+query TTI
+SELECT message, attributes->>'$.http.method', (attributes->>'$.http.status_code')::INT FROM datadog.main.logs('service:web @http.status_code:>=500', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') ORDER BY ts;
+----
+GET /api/orders 500	GET	500
+upstream "orders" failed	POST	502
+GET /api/orders 500 again	GET	500
+
+query TT
+SELECT typeof(tags), typeof(attributes) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') LIMIT 1;
+----
+MAP(VARCHAR, VARCHAR)	JSON
+
+# newest_first + max_rows: the latest N.
+query TT
+SELECT id, message FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-03 00:00:00+00', max_rows := 3, newest_first := true) ORDER BY ts DESC;
+----
+AQAAAZ0012	next day info
+AQAAAZ0011	next day
+AQAAAZ0010	GET /api/orders 500 again
+
+# A ts predicate narrows the window; ts <= x still includes x.
+query T
+SELECT id FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-03 00:00:00+00') WHERE ts >= TIMESTAMPTZ '2026-11-01 00:03:00+00' AND ts <= TIMESTAMPTZ '2026-11-01 00:05:00+00' ORDER BY ts;
+----
+AQAAAZ0003
+AQAAAZ0004
+AQAAAZ0005
+
+# A quote in a value is data, not syntax.
+query T
+SELECT message FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE service = 'o''reilly svc';
+----
+quoted service name
+
+query I
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE service = 'web" OR service:"api';
+----
+0
+
+# IN, OR of equalities and <> all push down and stay exact.
+query TI
+SELECT host, count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE host IN ('web-1', 'lb-1') AND status <> 'error' GROUP BY host ORDER BY host;
+----
+lb-1	1
+web-1	2
+
+query I
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE service = 'nginx' OR service = 'api';
+----
+4
+
+# A predicate that cannot be pushed is still applied by DuckDB.
+query I
+SELECT count(*) FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE message LIKE '%500%';
+----
+2
+
+statement error
+SELECT * FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00', storage_tier := 'cold');
+----
+<REGEX>:.*
+
+# ------------------------------------------------------------------ logs_aggregate
+
+query TTR
+SELECT groups['service'], groups['status'], value FROM datadog.main.logs_aggregate('env:prod', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00', group_by := 'service,status') ORDER BY value DESC, 1, 2;
+----
+web	error	3.0
+web	info	2.0
+api	error	1.0
+api	warn	1.0
+nginx	info	1.0
+o'reilly svc	error	1.0
+
+query TR
+SELECT ts, value FROM datadog.main.logs_aggregate('service:web', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00', rollup := '1h') ORDER BY ts;
+----
+2026-11-01 00:00:00+00	3.0
+2026-11-01 01:00:00+00	2.0
+
+query RTT
+SELECT value, aggregation, metric FROM datadog.main.logs_aggregate('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00', aggregation := 'max', metric := '@duration');
+----
+950000000.0	max	@duration
+
+statement error
+SELECT * FROM datadog.main.logs_aggregate('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00', aggregation := 'avg');
+----
+<REGEX>:.*needs metric.*
+
+statement error
+SELECT * FROM datadog.main.logs_aggregate('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00', rollup := 'hourly');
+----
+<REGEX>:.*
+
+# ------------------------------------------------------------------ spans
+
+query TIRR
+SELECT resource_name, count(*) AS spans, max(duration_seconds), avg(is_error::INT) FROM datadog.main.spans('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 01:00:00+00') WHERE service = 'web' AND env = 'prod' GROUP BY resource_name ORDER BY resource_name;
+----
+GET /api/orders	1	0.95	1.0
+GET /api/users	2	0.02	0.0
+POST /api/orders	1	0.14	0.0
+
+query TTTT
+SELECT span_id, parent_id, operation_name, attributes->>'$.http.method' FROM datadog.main.spans('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 01:00:00+00') WHERE trace_id = '7003' ORDER BY ts;
+----
+9003	0	http.request	SELECT
+9004	9003	http.request	SELECT
+
+# Spans join logs on trace_id.
+query TTT
+SELECT s.service, s.resource_name, l.message FROM datadog.main.spans('status:error', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 01:00:00+00') s JOIN datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 01:00:00+00') l ON l.trace_id = s.trace_id ORDER BY s.service;
+----
+api	SELECT orders	connection reset
+web	GET /api/orders	GET /api/orders 500
+
+query TR
+SELECT groups['resource_name'], value / 1e6 AS p99_ms FROM datadog.main.spans_aggregate('env:prod', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00', group_by := 'resource_name', aggregation := 'pc99', metric := '@duration', group_limit := 2) ORDER BY p99_ms DESC;
+----
+GET /api/orders	950.0
+SELECT orders	410.0
+
+query R
+SELECT value FROM datadog.main.spans_aggregate('service:web', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00');
+----
+5.0
+
+# ------------------------------------------------------------------ events / audit
+
+query TTT
+SELECT id, title, tags['service'] FROM datadog.main.events('tags:deploy', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-03 00:00:00+00') WHERE source = 'github' ORDER BY ts;
+----
+evt-1	Deployed web 1.4.2	web
+evt-3	Deployed api 2.0.0	api
+evt-5	Deployed web 1.4.3	web
+
+query TTT
+SELECT id, status, host FROM datadog.main.events('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') WHERE host = 'node-7';
+----
+evt-4	warning	node-7
+
+query TTI
+SELECT user_email, asset_type, count(*) AS changes FROM datadog.main.audit_events('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-08 00:00:00+00') WHERE service = 'monitor' GROUP BY ALL ORDER BY changes DESC;
+----
+ada@example.com	monitor	2
+
+query TT
+SELECT action, asset_name FROM datadog.main.audit_events('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-08 00:00:00+00') WHERE user_email = 'ada@example.com' AND action = 'deleted';
+----
+deleted	Old disk check
+
+# ------------------------------------------------------------------ offline helpers
+
+query T
+SELECT datadog.main.search_term('service', 'checkout "v2"');
+----
+service:"checkout \"v2\""
+
+query T
+SELECT datadog.main.search_term(a, v) FROM (VALUES ('host', 'web-1'), (NULL, 'x'), ('host', NULL)) t(a, v) ORDER BY ALL NULLS LAST;
+----
+host:"web-1"
+NULL
+NULL
+
+query TTT
+SELECT m['env'], m['team'], m['legacy'] FROM (SELECT datadog.main.tag_map(['env:prod', 'team:core', 'team:web', 'legacy']) AS m);
+----
+prod	core,web	(empty)
+
+query T
+SELECT datadog.main.tag_map(NULL::VARCHAR[]) IS NULL;
+----
+true
+
+# tag_map composes with list columns the worker returns.
+query TT
+SELECT id, datadog.main.tag_map(tags)['team'] FROM datadog.resources.dashboard('abc-def-ghi');
+----
+abc-def-ghi	core

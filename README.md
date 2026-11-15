@@ -1,314 +1,268 @@
-<!-- managed-by: vgi-starters (edit upstream in shared/README.md.tmpl, then run tools/render.py) -->
 <p align="center">
   <img src="https://query.farm/media-kit/products/vgi/vgi-logo.png" alt="Vector Gateway Interface (VGI)" width="320">
 </p>
 
-<p align="center"><em>A Query.Farm VGI worker for DuckDB, written in Python.</em></p>
+# Query Datadog Metrics, Logs, Traces, Monitors and Incidents in DuckDB
 
-# VGI Starter Worker — Python
+> **vgi-datadog** · a [Query.Farm](https://query.farm) VGI worker
 
-[![CI](https://github.com/Query-farm/vgi-starter-python/actions/workflows/ci.yml/badge.svg)](https://github.com/Query-farm/vgi-starter-python/actions/workflows/ci.yml)
+[![CI](https://github.com/Query-farm/vgi-datadog/actions/workflows/ci.yml/badge.svg)](https://github.com/Query-farm/vgi-datadog/actions/workflows/ci.yml)
 [![vgi worker: query.farm](https://query.farm/media-kit/shields/vgi-worker.svg)](https://query.farm)
 
-[VGI](https://query.farm/vgi) lets DuckDB call functions that live in a separate
-process: your code, in any language, exposed as ordinary SQL. This worker adds
-three example functions that you rename and replace with your own:
+[Datadog](https://www.datadoghq.com) as SQL, read-only, on every Datadog site. Run metric queries and
+get long rows `(metric, tags, ts, value)`; search logs, APM spans, events and the audit trail with your
+`WHERE` clause translated into Datadog search syntax; let Datadog compute log and span analytics; and
+list monitors, downtimes, SLOs, incidents, dashboards, synthetic tests, hosts, users, teams, roles, the
+service catalog and usage metering as tables.
 
-| Function | Kind | Shows you how to |
-|---|---|---|
-| `greet(name)` / `greet(name, style)` | scalar | vectorize over a column, overload, constrain a constant |
-| `sequence_table(count, step := 1)` | table | stream rows in batches, take named arguments |
-| `fetch_items(base_url, page_size := 100)` | table | page through a REST API, retry, read a secret |
-
-<!-- template-only:start -->
-## Use this template
-
-This repository is a **template**. Click **Use this template** on GitHub, or:
-
-```bash
-gh repo create my-org/weather-worker --template Query-farm/vgi-starter-python --private --clone
-cd weather-worker
-make init NAME=weather     # renames catalog, package, binary, env vars; removes this section
-make check                 # lint + tests over every transport + metadata score
+```sql
+-- Which production services logged the most errors yesterday?
+SELECT service, count(*) AS errors
+FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-14 00:00:00+00', TIMESTAMPTZ '2026-11-15 00:00:00+00')
+WHERE status = 'error' AND env = 'prod'
+GROUP BY service ORDER BY errors DESC;
 ```
 
-Prefer to work with an AI coding agent? `make init` first, then hand it
-[AGENTS.md](AGENTS.md). See [Using with coding agents](#using-with-coding-agents).
-
-Starters exist for [Python](https://github.com/Query-farm/vgi-starter-python),
-[TypeScript](https://github.com/Query-farm/vgi-starter-typescript),
-[Go](https://github.com/Query-farm/vgi-starter-go),
-[Rust](https://github.com/Query-farm/vgi-starter-rust),
-[Java](https://github.com/Query-farm/vgi-starter-java) and
-[C#](https://github.com/Query-farm/vgi-starter-csharp). They are generated from
-[Query-farm/vgi-starters](https://github.com/Query-farm/vgi-starters); send
-changes there.
-<!-- template-only:end -->
+`status = 'error' AND env = 'prod'` is sent to Datadog as `status:"error" env:"prod"`, so only matching
+logs cross the wire.
 
 ## Quick start
 
-**Prerequisites:** Python 3.13+ and [uv](https://docs.astral.sh/uv/) (it runs the SQL
-test runner and the metadata checker).
+**Prerequisites:** [uv](https://docs.astral.sh/uv/) and DuckDB 2.0 or [Haybarn](https://query.farm/products/haybarn) 2.0.
 
-```bash
-make build
-```
-
-Then open DuckDB 2.0 or [Haybarn](https://query.farm/products/haybarn) and attach the
-worker. `LOCATION` is the command DuckDB runs to start it; use an absolute path,
-because a relative one resolves against DuckDB's working directory.
-
-**DuckDB 2.0:**
+The worker is installed straight from this repository (it is not published to PyPI). `LOCATION` is
+the command DuckDB runs to start it:
 
 ```sql
+-- DuckDB 2.0
 SET allow_extension_repositories = 'allowed';
 CREATE EXTENSION REPOSITORY IF NOT EXISTS query_farm WITH PREFIX 'https://duckdb-extensions.query.farm';
 INSTALL vgi FROM query_farm;
 LOAD vgi FROM query_farm;
-ATTACH 'starter' (TYPE vgi, LOCATION '/abs/path/to/vgi-starter-python/.venv/bin/vgi-starter-worker');
+-- Haybarn 2.0: INSTALL vgi FROM community; LOAD vgi;
+
+ATTACH 'datadog' (TYPE vgi,
+  LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-datadog@v0.1.0 vgi-datadog-worker');
 ```
 
-**Haybarn 2.0** (`uvx haybarn-cli`):
+From a checkout, `make build` and use `LOCATION '/abs/path/to/vgi-datadog/.venv/bin/vgi-datadog-worker'`.
+
+## Credentials
+
+Create an API key and an application key (Organization settings → API keys / Application keys), then
+a DuckDB secret **after** `ATTACH`:
 
 ```sql
-INSTALL vgi FROM community;
-LOAD vgi;
-ATTACH 'starter' (TYPE vgi, LOCATION '/abs/path/to/vgi-starter-python/.venv/bin/vgi-starter-worker');
+-- US1 (datadoghq.com) is the default site
+CREATE SECRET dd (TYPE datadog, API_KEY '...', APP_KEY '...');
+
+-- Any other site
+CREATE SECRET dd (TYPE datadog, API_KEY '...', APP_KEY '...', SITE 'datadoghq.eu');
 ```
 
-Now call the functions:
+| Field | Required | Meaning |
+|---|---|---|
+| `API_KEY` | yes | Sent as `DD-API-KEY`. Redacted in `duckdb_secrets()`. |
+| `APP_KEY` | yes | Sent as `DD-APPLICATION-KEY`. Scope it to read permissions. Redacted. |
+| `SITE` | no | `datadoghq.com` (US1, default), `us3.datadoghq.com`, `us5.datadoghq.com`, `datadoghq.eu`, `ap1.datadoghq.com`, `ap2.datadoghq.com` or `ddog-gov.com`. Aliases: `us1`, `us3`, `us5`, `eu`, `ap1`, `ap2`, `gov`. Picks the API origin (`https://api.<site>`) and the app origin used in `url` columns. |
+| `BASE_URL` | no | Override the API origin: a proxy, or a local fixture server in tests. |
+| `PAGE_SIZE` | no | Rows per page on search endpoints, 1–1000 (default 1000). List endpoints cap it at their own maximum. |
+| `TIMEOUT` | no | Per-request timeout in seconds (default 60). |
 
-```sql
-SELECT starter.main.greet('Ada');                         -- Hi, Ada!
-SELECT starter.main.greet('Ada', 'formal');               -- Good day, Ada.
-SELECT * FROM starter.main.sequence_table(5, step := 2) ORDER BY n;
-```
+Suggested application-key scopes: `metrics_read`, `timeseries_query`, `logs_read_data`, `logs_read_index_data`,
+`apm_read`, `events_read`, `audit_logs_read`, `monitors_read`, `monitors_downtime`, `slos_read`,
+`incident_read`, `dashboards_read`, `synthetics_read`, `hosts_read`, `user_access_read`, `teams_read`,
+`apm_service_catalog_read`, `usage_read`. The worker never calls a write endpoint.
 
-`fetch_items` pages through a REST API. Try it against the public demo API (25 fixed items):
+Keys are read from the secret on every call. They never enter table-function state, logs or query
+text.
 
-```sql
-SELECT category, count(*) AS items, round(avg(price), 2) AS avg_price
-FROM starter.main.fetch_items('https://vgi-starter-api.query-farm.services/v1')
-GROUP BY category ORDER BY category;
-```
+## What's inside
 
-If an older cached extension misbehaves, refresh it with `FORCE INSTALL vgi FROM query_farm;`
-(DuckDB) or `FORCE INSTALL vgi FROM community;` (Haybarn).
+### `datadog.main`: telemetry
 
-## Using it in a pipeline
+| Object | Kind | Endpoint |
+|---|---|---|
+| `metrics_query(query, from_time, to_time)` | table function | `GET /api/v1/query` |
+| `metrics` | table | `GET /api/v2/metrics` |
+| `metric_metadata(metric)` | table function | `GET /api/v1/metrics/{metric}` |
+| `metric_tags(metric)` | table function | `GET /api/v2/metrics/{metric}/all-tags` |
+| `logs(query, from_time, to_time, max_rows, newest_first, indexes, storage_tier)` | table function | `POST /api/v2/logs/events/search` |
+| `logs_aggregate(query, from_time, to_time, group_by, aggregation, metric, group_limit, rollup)` | table function | `POST /api/v2/logs/analytics/aggregate` |
+| `spans(query, from_time, to_time, max_rows, newest_first)` | table function | `POST /api/v2/spans/events/search` |
+| `spans_aggregate(...)` | table function | `POST /api/v2/spans/analytics/aggregate` |
+| `events(query, from_time, to_time, max_rows, newest_first)` | table function | `POST /api/v2/events/search` |
+| `audit_events(query, from_time, to_time, max_rows, newest_first)` | table function | `POST /api/v2/audit/events/search` |
+| `search_term(attribute, value)` | scalar (offline) | builds `attribute:"value"`, quoted and escaped |
+| `tag_map(tags)` | scalar (offline) | `['env:prod', 'team:core']` → `MAP {'env': 'prod', 'team': 'core'}` |
 
-Worker functions compose with everything else in DuckDB:
+`from_time` / `to_time` are positional `TIMESTAMPTZ` arguments.
 
-```sql
--- Materialize an API into a local table.
-CREATE TABLE items AS SELECT * FROM starter.main.fetch_items('https://vgi-starter-api.query-farm.services/v1');
+### `datadog.resources`: configuration and records
 
--- Join it with local files.
-SELECT i.name, i.price, s.units
-FROM items i JOIN 'sales.parquet' s ON s.item_id = i.id;
+| Object | Kind | Endpoint |
+|---|---|---|
+| `monitors` | table | `GET /api/v1/monitor` |
+| `monitor_groups` | table (one row per monitor group and its state) | `GET /api/v1/monitor?group_states=all` |
+| `downtimes` | table | `GET /api/v2/downtime` |
+| `slos` | table | `GET /api/v1/slo` |
+| `slo_history(slo_id, from_time, to_time)` | table function | `GET /api/v1/slo/{id}/history` |
+| `incidents` | table | `GET /api/v2/incidents` |
+| `dashboards` | table | `GET /api/v1/dashboard` |
+| `dashboard(dashboard_id)` | table function (widgets as JSON) | `GET /api/v1/dashboard/{id}` |
+| `synthetics_tests` | table | `GET /api/v1/synthetics/tests` |
+| `synthetics_results(public_id, from_time, to_time)` | table function | `GET /api/v1/synthetics/tests/[browser/]{id}/results` |
+| `hosts` | table | `GET /api/v1/hosts` |
+| `host_tags` | table | `GET /api/v1/tags/hosts` |
+| `users`, `teams`, `roles` | tables | `GET /api/v2/users`, `/api/v2/team`, `/api/v2/roles` |
+| `services` | table (service catalog) | `GET /api/v2/services/definitions` |
+| `usage_summary(start_month, end_month := NULL)` | table function | `GET /api/v1/usage/summary` |
 
--- Call a scalar per row of another table.
-SELECT customer, starter.main.greet(customer, 'formal') FROM read_csv('customers.csv');
-```
+### Shapes that UNION with other workers
 
-## Project layout
+* **Metrics** come back in long format: `metric VARCHAR`, `tags MAP(VARCHAR, VARCHAR)`, `ts TIMESTAMPTZ`,
+  `value DOUBLE` (plus `scope`, `expression`, `query_index`, `aggr`, `unit`, `interval_seconds`). It
+  matches the Prometheus worker's `(metric, labels, ts, value)`:
 
-```
-src/starter_worker/
-  worker.py        # assembles the catalog; add new functions to FUNCTIONS
-  meta.py          # catalog/schema metadata + helpers (object_tags, column)
-  greet.py         # scalar example (overloads, ConstParam choices)
-  sequence.py      # table function example (named args, streaming state)
-  fetch_items.py   # REST API table function (pagination, retries, secrets)
-tests/             # pytest unit tests (in-process client)
-test/sql/          # sqllogictest files run through DuckDB
-test/mock_api/     # offline mock of the REST API used by tests
-examples/          # recipes: pushdown, caching, catalog tables, aggregates, COPY …
-ci/                # integration harness used by `make test-sql` and CI
-scripts/           # vgi_template.py (init / template-diff)
-vgi-agent-tests.yaml  # private graders for the agent test tasks
-```
+  ```sql
+  SELECT metric, tags AS labels, ts, value FROM datadog.main.metrics_query('avg:system.cpu.user{*} by {host}', TIMESTAMPTZ '2026-11-14 00:00:00+00', TIMESTAMPTZ '2026-11-14 01:00:00+00')
+  UNION ALL BY NAME
+  SELECT metric, labels, ts, value FROM prometheus.main.query_range('node_load1', TIMESTAMPTZ '2026-11-14 00:00:00+00', TIMESTAMPTZ '2026-11-14 01:00:00+00', 60);
+  ```
 
-## Adding a function
+* **Incidents** use the shared incident vocabulary: `incident_id`, `title`, `status`, `severity`,
+  `created_at`, `resolved_at`, `time_to_resolve_seconds`, `url` (plus Datadog's `incident_number`,
+  detect/repair times, customer impact, services, teams and every field as JSON).
+* **Tags** are always `MAP(VARCHAR, VARCHAR)`, split at the first colon. A bare tag maps to `''`; a key
+  that repeats keeps all its values joined with `,`.
 
-1. Create `src/starter_worker/<name>.py`. Copy the closest example: `greet.py` for a
-   scalar, `sequence.py` for a generator, `fetch_items.py` for an API.
-2. Declare arguments with `Annotated[..., Param(...)]`/`ConstParam(...)` (scalars) or a
-   frozen dataclass of `Annotated[..., Arg(...)]` (table functions). Use `Arg(0, ...)`
-   for positional arguments and `Arg("name", default=...)` for named ones.
-3. Give the class a `class Meta` with `name`, `description`, `tags=object_tags(...)`
-   and `examples`.
-4. Add the class to `FUNCTIONS` in `src/starter_worker/worker.py`.
+## Pushdown
 
-**Which kind of function?**
-
-| You want to… | Use |
+| Where | What is sent to Datadog |
 |---|---|
-| compute one value per input row | a **scalar** function |
-| return a set of rows from arguments (an API, a file, a generator) | a **table** function |
-| transform or aggregate the rows of a query | a **table in-out** function or an **aggregate** |
-| expose a fixed dataset by name (`SELECT * FROM starter.main.t`) | a **catalog table** |
-| write data out to a file or service | `COPY … TO` with a copy function |
-| accept `INSERT` / `UPDATE` / `DELETE` | a catalog table with insert/update/delete functions |
+| `logs` | `service`, `status`, `host`, `env`, `source`: `=`, `<>`, `IN`, `OR` of equalities on one column, `IS NOT NULL` → search terms; `ts` comparisons → `filter.from` / `filter.to` |
+| `spans` | `service`, `env`, `host`, `resource_name`, `operation_name`, `status`, `trace_id` → search terms; `ts` → window |
+| `events` | `source`, `status`, `priority`, `host`, `service` → search terms; `ts` → window |
+| `audit_events` | `service`, `event_name` (`@evt.name`), `action` (`@action`), `asset_type` (`@asset.type`), `user_email` (`@usr.email`) → search terms; `ts` → window |
+| `max_rows`, `newest_first` | `page.limit`, `sort: -timestamp` |
+| `metrics` | `metric_type = 'x'` → `filter[metric_type]` |
+| `monitors` | `id = n` → `GET /api/v1/monitor/{n}`; `name = 'x'` → `name=` (substring, re-checked) |
+| `monitor_groups` | `monitor_id = n` → `GET /api/v1/monitor/{n}?group_states=all` |
+| `downtimes` | `status = 'active'` → `current_only=true` |
+| `slos` | `id = 'x'` / `id IN (...)` → `ids=` |
+| `hosts` | `host_name = 'x'` → `filter=` (re-checked) |
+| `users` | `status = 'x'` → `filter[status]` |
 
-The [examples/](examples/) folder has a recipe for most of these. Writable tables have no
-recipe:
+Every pushed term is `attribute:"value"` with `\` and `"` escaped, so values can never change the
+query's structure. The user's own query is parenthesised before terms are appended, so its `OR` cannot
+swallow them. Every scan sets `auto_apply_filters`: DuckDB re-applies every predicate to the returned
+rows, so predicates that are not translated (or only widened, such as `ts <= x`, sent as `to = x + 1 ms`
+because Datadog's `to` is exclusive) still hold. A contradictory `ts` window sends no request at all.
 
-A writable table is a catalog `Table` that names a table in-out function per operation in
-`insert_function`, `update_function` and `delete_function`, with the richest result each one
-produces in `write_result_modes`. The helpers in `vgi.write_results` (`write_options`,
-`write_result_schema`, `write_result_batch`, `row_id_field`) read DuckDB's `write_options`
-argument and build the result. UPDATE and DELETE need a scan function that emits
-`row_id_field()` and declares projection pushdown. Transactions: override `attach_supports_transactions`
-and `catalog_transaction_begin` / `_commit` / `_rollback` on the catalog. Since VGI protocol 3.3
-a table's scan and write functions are table-only: hidden from `duckdb_functions()` and not
-callable from SQL. Set `expose_scan=True` on the table to keep the scan callable as an ordinary
-table function too (write functions never are). See
-[Writable tables](https://github.com/Query-farm/vgi-python/blob/main/docs/catalog-interface.md#writable-tables)
-in the vgi-python docs.
+Not pushed: predicates on JSON `attributes` and on `tags` maps (put facets such as
+`@http.status_code:>=500` in the query text), and time predicates on `metrics_query` and the aggregate
+functions (Datadog chooses the rollup from the window, so narrowing it would change the values).
 
-## Secrets and configuration
+## Limits, paging and rate limits
 
-`fetch_items` shows the recommended pattern. A bearer token comes from a DuckDB secret
-when one exists, and from an environment variable otherwise:
+* Search endpoints page with Datadog's opaque `meta.page.after` cursor, up to 1,000 rows per page; list
+  endpoints page with their own page number or offset. The cursor lives in the scan state, so a long
+  scan resumes on any worker process over the HTTP transport.
+* Datadog rate-limits each endpoint separately and reports it in `X-RateLimit-Limit` / `-Period` /
+  `-Remaining` / `-Reset` / `-Name`. A 429 is retried after `X-RateLimit-Reset` seconds (or
+  `Retry-After`, then exponential backoff, capped at 60 s, up to 6 attempts); a successful answer with
+  `X-RateLimit-Remaining: 0` makes the next request to that endpoint wait for the reset instead of
+  spending a 429. 5xx answers and connection errors are retried with backoff.
+* Log search covers the retention of the chosen indexes; use `storage_tier := 'flex'` or
+  `'online-archives'` for other tiers. For large volumes prefer `logs_aggregate`.
+* `synthetics_results` returns Datadog's latest results for the window (about 150 per call).
+* `usage_summary` needs `usage_read` on the parent organization. Without it the call fails with a
+  message naming that permission (it is feature-detected from the 403, not assumed).
+* The incident timeline has no documented public read endpoint, so it is not exposed; every incident
+  field is available in `incidents.fields` JSON.
+
+## Examples
 
 ```sql
-CREATE SECRET (TYPE starter_api, TOKEN 'your-token');      -- per session, never logged
+-- CPU per production host over one hour, in long format.
+SELECT tags['host'] AS host, avg(value) AS avg_cpu
+FROM datadog.main.metrics_query('avg:system.cpu.user{env:prod} by {host}',
+       TIMESTAMPTZ '2026-11-14 00:00:00+00', TIMESTAMPTZ '2026-11-14 01:00:00+00')
+GROUP BY host ORDER BY avg_cpu DESC;
+
+-- p95 latency and error rate per endpoint of one service.
+SELECT resource_name, quantile_cont(duration_seconds, 0.95) AS p95_s, avg(is_error::INT) AS error_rate
+FROM datadog.main.spans('*', TIMESTAMPTZ '2026-11-14 00:00:00+00', TIMESTAMPTZ '2026-11-14 01:00:00+00')
+WHERE service = 'web' AND env = 'prod'
+GROUP BY resource_name ORDER BY p95_s DESC;
+
+-- Log volume per service and status, counted inside Datadog.
+SELECT groups['service'] AS service, groups['status'] AS status, value AS logs
+FROM datadog.main.logs_aggregate('env:prod', TIMESTAMPTZ '2026-11-14 00:00:00+00',
+       TIMESTAMPTZ '2026-11-15 00:00:00+00', group_by := 'service,status')
+ORDER BY logs DESC;
+
+-- Hosts alerting on any monitor.
+SELECT group_tags['host'] AS host, list(monitor_name ORDER BY monitor_name) AS monitors
+FROM datadog.resources.monitor_groups WHERE status = 'Alert' GROUP BY host;
+
+-- MTTR per severity.
+SELECT severity, count(*) AS incidents, avg(time_to_resolve_seconds) / 3600 AS mttr_hours
+FROM datadog.resources.incidents WHERE status = 'resolved' GROUP BY severity ORDER BY severity;
+
+-- Error budget left on one SLO over October.
+SELECT sli_value, target, error_budget_remaining_pct
+FROM datadog.resources.slo_history('abc123def456', TIMESTAMPTZ '2026-10-01 00:00:00+00',
+       TIMESTAMPTZ '2026-11-01 00:00:00+00')
+WHERE group_name IS NULL;
+
+-- Monitors owned by each team.
+SELECT t.handle, count(m.id) AS monitors
+FROM datadog.resources.teams t LEFT JOIN datadog.resources.monitors m ON m.tags['team'] = t.handle
+GROUP BY t.handle ORDER BY monitors DESC;
 ```
-
-```bash
-STARTER_API_TOKEN=your-token make run-http                # for servers and containers
-```
-
-Try it: the demo API's `/v1/auth` endpoint needs the published token `demo-token`.
-
-```sql
-SELECT count(*) FROM starter.main.fetch_items('https://vgi-starter-api.query-farm.services/v1/auth');   -- fails: HTTP 401
-CREATE SECRET (TYPE starter_api, TOKEN 'demo-token');
-SELECT count(*) FROM starter.main.fetch_items('https://vgi-starter-api.query-farm.services/v1/auth');   -- 25
-```
-
-Never bake credentials into the image or the source. If a function can't run without
-real credentials, its examples can't execute in CI either. Set `execute: false` on the
-metadata check for that worker (see `.github/workflows/ci.yml`), and add
-`LINT_ARGS ?= --no-execute` to the Makefile so local runs match.
 
 ## Testing
 
-```bash
-make test-unit                 # fast Python unit tests
-make test-sql                  # test/sql/*.test through DuckDB (stdio)
-make test-sql TRANSPORT=http   # …over HTTP (also: launch)
-make check                     # everything CI runs
+CI needs no network and no Datadog account. `test/mock_api/server.py` is a strict replay server over
+`test/fixtures/datadog.json` (regenerate with `python3 test/fixtures/generate.py`), built from the
+documented response shapes. It requires the `DD-API-KEY` / `DD-APPLICATION-KEY` headers, rejects unknown
+query parameters and unknown POST body fields, validates time windows and page limits, **evaluates** the
+search query (terms, quoting, `OR`, negation, `@facets`) so a wrong pushdown returns wrong rows, pages
+with opaque cursors, answers the first request to every route with a 429 and Datadog's
+`X-RateLimit-*` headers, and keeps a request log (`GET /__requests`) that `test/sql/pushdown.test`
+asserts against.
+
+```sh
+make check                      # ruff, mypy, pydoclint, pytest, SQL over stdio/launch/http, vgi-lint
+make test-sql TRANSPORT=stdio   # one transport
 ```
-
-`test/sql/*.test` files are [sqllogictest](https://duckdb.org/docs/stable/dev/sqllogictest/intro)
-scripts. `ci/run-integration.sh` runs them against your worker and fails on any
-unexpected skip, so a broken transport can't hide behind a green run.
-`fetch_items` is tested against `test/mock_api/server.py` so tests are fast and
-offline.
-
-**Testing against real data:** put live tests in their own `.test` file that starts with
-`require-env STARTER_LIVE`. They run only when that variable is set. Add the skip reason
-to `EXPECTED_SKIP_REASONS` in CI.
 
 ## Metadata and the quality score
 
-DuckDB, agents and documentation tools discover your functions through their metadata:
-titles, descriptions, argument docs, examples and keywords.
-[vgi-lint](https://github.com/Query-farm/vgi-lint-check) checks it, and CI runs it on
-every push. Its settings live in `vgi-lint.toml`, which `make lint-explain`,
-`vgi-lint lint`, and CI all read. This template scores 100/100 with no findings.
-
-```bash
-make lint-explain                              # findings, each with its fix
-make lint-explain LINT_ARGS="--format agent"   # the same, grouped for coding agents
-make lint-ai                                   # optional: an agent must solve vgi-agent-tests.yaml
-```
-
-Each report also states an **assurance level**: how much was actually verified.
-
-| Level | Reached when | Here |
-|---|---|---|
-| L1 structural | the static metadata is clean | workers that need real credentials (`execute: false` in CI) |
-| L2 behavioural | the examples also run and return what they claim | **the CI gate** |
-| L3 semantic | an agent solves the worker's own test tasks, and the docs are reviewed | `make lint-ai`, before publishing |
-
-- **How strict.** Your copy fails on warnings (`fail_on = "warning"` in `vgi-lint.toml`).
-  Raise it to `"info"` before you publish the worker for others.
-- **The linter isn't pinned.** It tracks the current quality bar, so a new rule can flag
-  metadata that passed yesterday. Fix it, or waive the finding.
-- **Waivers.** If a finding is genuinely wrong for your worker, waive it in
-  `vgi-lint.toml` with a `kind` and a `reason`.
-- **Existing workers.** If you're adding this gate to a worker that already has
-  findings, record them with `vgi-lint lint --baseline vgi-lint-baseline --update-baseline`
-  and set `baseline` in `vgi-lint.toml`. After that, only new findings fail.
-
-Metadata lives in `src/starter_worker/meta.py` and each function's `class Meta`.
+`make lint-explain` runs [vgi-lint](https://github.com/Query-farm/vgi-lint-check) at `fail_on = "info"`.
+Every table and function has a title, category, keywords, LLM- and human-facing docs, typed column
+comments and examples; the two offline helpers carry executable examples. The worker is
+credential-gated, so CI runs the linter with `execute: "false"`.
 
 ## Logging and debugging
 
-stdout carries the Arrow protocol, so **never print to stdout**. Log to stderr instead.
-Use the standard `logging` module (the SDK routes it to stderr); `--debug` or `--log-level DEBUG` turns it up.
-
-- Under DuckDB (stdio/launch), worker stderr shows up in DuckDB's error messages and
-  terminal.
-- In Docker it goes to `docker logs`.
-- `make debug` runs one query against the worker with debug logging on.
+Diagnostics go to stderr. `vgi-datadog-worker --debug` (or `make debug`) turns on debug logging,
+including every retry and rate-limit wait. Keys are never logged.
 
 ## Deploying
 
-The same binary serves stdio (DuckDB starts it locally) or HTTP (you host it):
-
-```bash
-docker build -t weather-worker .
-docker run -p 8000:8000 -e STARTER_API_TOKEN=... weather-worker   # health: GET /health
-```
-
-```sql
-ATTACH 'starter' (TYPE vgi, LOCATION 'https://workers.example.com/starter');
-```
-
-Put hosted workers behind TLS and authentication. See
-[authentication](https://query.farm/vgi/authentication) for bearer tokens and JWTs, and
-[distributing a worker](https://query.farm/vgi/distributing-a-worker) for packaging.
-Pass secrets with `-e` or your platform's secret manager.
-
-## Releasing
-
-Push a tag like `v0.1.0`. The release workflow builds the wheel and sdist, attaches them to the GitHub release, and (if you set the repository variable `PYPI_PUBLISH=true` and configure PyPI Trusted Publishing) publishes to PyPI, so users can run `uvx vgi-starter-worker`. Without PyPI, users install straight from the repo with `uvx --from git+https://github.com/Query-farm/vgi-starter-python@v0.1.0 vgi-starter-worker`. Every artifact is signed with cosign and
-carries SLSA build provenance. `ci/check-version.sh` makes sure the tag matches the
-version in `pyproject.toml`.
-
-## Using with coding agents
-
-[AGENTS.md](AGENTS.md) is written for AI coding agents (Claude Code reads it via
-`CLAUDE.md`; Codex, Cursor and others read it directly). It covers the commands, the
-recipe for adding a function, the metadata checklist and the sharp edges. A good first
-prompt:
-
-> Read AGENTS.md. Replace `fetch_items` with `forecast(lat DOUBLE, lon DOUBLE)` that calls
-> the Open-Meteo API. Include full metadata, a mock-server test and a `STARTER_LIVE` test.
-> You're done when `make check` passes.
-
-## Keeping up with the template
-
-`make template-diff` shows what changed upstream (CI, docs, examples) since your copy was
-made. Your copy records its template version in `.vgi-starter.json`.
-
-## Learn more
-
-- [What is VGI?](https://query.farm/vgi) · [Getting started](https://query.farm/vgi/getting-started) · [Building a worker](https://query.farm/vgi/building-a-worker)
-- [Python SDK docs](https://query.farm/vgi/docs/python/): [scalar tutorial](https://query.farm/vgi/docs/python/tutorial/scalar/), [table tutorial](https://query.farm/vgi/docs/python/tutorial/table/)
-- [Distributing a worker](https://query.farm/vgi/distributing-a-worker) · [Choosing a language](https://query.farm/vgi/languages) · [llms.txt](https://query.farm/vgi/llms.txt)
-- SDK source: [vgi-python](https://github.com/Query-farm/vgi-python) · RPC layer: [https://vgi-rpc-python.query.farm](https://vgi-rpc-python.query.farm)
+`vgi-datadog-worker --http --port 8000` serves the worker over HTTP (see the `Dockerfile`); attach it with
+`LOCATION 'http://host:8000'`. Each request carries the DuckDB secret, so one deployment serves many
+Datadog organizations.
 
 ## Support
 
-Open an issue on this repository. For VGI itself, see [query.farm](https://query.farm).
+Open an issue at <https://github.com/Query-farm/vgi-datadog/issues>.
 
-## Authorship & license
+## Authorship & License
 
-The starter template is written by [Query.Farm](https://query.farm) and released under
-the [BSD Zero Clause License](LICENSE) (0BSD). Use it for anything, with no attribution
-required. Replace this section with your own license once the code is yours.
+Copyright 2026 Query Farm LLC - https://query.farm
+
+Released under the [BSD Zero Clause License](LICENSE) (0BSD). Datadog is a trademark of Datadog, Inc.;
+this worker is an independent project that uses Datadog's public API.

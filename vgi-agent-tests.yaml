@@ -1,16 +1,119 @@
 # Private graders for the public vgi.agent_test_tasks in the worker's catalog metadata.
-# `vgi-lint lint --ai` runs an agent on each prompt and grades it with check_sql.
+# `vgi-lint lint --ai` runs an agent on each prompt and grades it against reference_sql.
 # See https://github.com/Query-farm/vgi-lint-check (VGI920).
+#
+# Credential-gated: every task needs a `datadog` secret. The data is the fixture organization
+# (test/fixtures/datadog.json served by test/mock_api/server.py), which never changes, so the
+# reference results are deterministic. Run --ai against the mock with
+#   CREATE SECRET (TYPE datadog, API_KEY 'fixture-api-key', APP_KEY 'fixture-app-key',
+#                  BASE_URL 'http://127.0.0.1:<mock port>');
 tasks:
-  - name: formal_greeting
-    reference_sql: SELECT starter.main.greet('Grace', 'formal') AS greeting
-  - name: sum_of_squares
-    reference_sql: SELECT sum(squared) AS total FROM starter.main.sequence_table(10)
-  - name: stepped_sequence
-    reference_sql: SELECT n FROM starter.main.sequence_table(4, step := 5) ORDER BY n
-  # Reads the public demo API (https://vgi-starter-api.query-farm.services/v1).
-  - name: items_per_category
-    check_sql: >-
-      SELECT count(*) = 3 AND sum(items) = 25
-      FROM (SELECT category, count(*) AS items
-            FROM starter.main.fetch_items('https://vgi-starter-api.query-farm.services/v1') GROUP BY category)
+  - name: prod_errors_by_service
+    reference_sql: >-
+      SELECT service, count(*) AS errors
+      FROM datadog.main.logs('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00')
+      WHERE status = 'error' AND env = 'prod' GROUP BY service
+    unordered: true
+  - name: alerting_monitors
+    reference_sql: SELECT id, name FROM datadog.resources.monitors WHERE overall_state = 'Alert'
+    unordered: true
+  - name: cpu_by_host
+    reference_sql: >-
+      SELECT tags['host'] AS host, avg(value) AS avg_cpu
+      FROM datadog.main.metrics_query('avg:system.cpu.user{env:prod} by {host}',
+        TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 01:00:00+00')
+      GROUP BY host
+    unordered: true
+  - name: mttr_by_severity
+    reference_sql: >-
+      SELECT severity, avg(time_to_resolve_seconds) / 3600 AS mttr_hours
+      FROM datadog.resources.incidents WHERE status = 'resolved' GROUP BY severity
+    unordered: true
+  - name: slow_endpoints
+    reference_sql: >-
+      SELECT resource_name, duration_seconds
+      FROM datadog.main.spans('service:web', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 01:00:00+00')
+      ORDER BY duration_seconds DESC LIMIT 1
+  - name: log_volume_by_status
+    reference_sql: >-
+      SELECT groups['status'] AS status, value AS logs FROM datadog.main.logs_aggregate('env:prod', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00', group_by := 'status')
+    unordered: true
+  - name: span_p99_by_resource
+    reference_sql: >-
+      SELECT groups['resource_name'] AS resource, value / 1e6 AS p99_ms FROM datadog.main.spans_aggregate('env:prod', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00', group_by := 'resource_name', aggregation := 'pc99', metric := '@duration')
+    unordered: true
+  - name: deploys_per_service
+    reference_sql: >-
+      SELECT tags['service'] AS service, count(*) AS deploys FROM datadog.main.events('tags:deploy', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-03 00:00:00+00') WHERE source = 'github' GROUP BY ALL
+    unordered: true
+  - name: audit_deletions
+    reference_sql: >-
+      SELECT user_email, asset_type, asset_name FROM datadog.main.audit_events('*', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-08 00:00:00+00') WHERE action = 'deleted'
+    unordered: true
+  - name: configured_metrics
+    reference_sql: >-
+      SELECT metric, metric_type FROM datadog.main.metrics WHERE has_tag_configuration
+    unordered: true
+  - name: metric_unit
+    reference_sql: >-
+      SELECT unit, per_unit FROM datadog.main.metric_metadata('system.net.bytes_rcvd')
+  - name: cpu_host_cardinality
+    reference_sql: >-
+      SELECT count(*) AS hosts FROM datadog.main.metric_tags('system.cpu.user') WHERE key = 'host'
+  - name: active_downtimes
+    reference_sql: >-
+      SELECT id, scope FROM datadog.resources.downtimes WHERE status = 'active'
+    unordered: true
+  - name: alerting_hosts
+    reference_sql: >-
+      SELECT group_tags['host'] AS host, monitor_name FROM datadog.resources.monitor_groups WHERE status = 'Alert' AND group_tags['host'] IS NOT NULL
+    unordered: true
+  - name: slo_error_budget
+    reference_sql: >-
+      SELECT error_budget_remaining_pct FROM datadog.resources.slo_history('abc123def456', TIMESTAMPTZ '2026-10-01 00:00:00+00', TIMESTAMPTZ '2026-11-01 00:00:00+00') WHERE group_name IS NULL
+  - name: dashboard_widgets
+    reference_sql: >-
+      SELECT widget_count FROM datadog.resources.dashboard('abc-def-ghi')
+  - name: synthetic_success_rate
+    reference_sql: >-
+      SELECT location, avg(passed::INT) AS success_rate FROM datadog.resources.synthetics_results('abc-123-xyz', TIMESTAMPTZ '2026-11-01 00:00:00+00', TIMESTAMPTZ '2026-11-02 00:00:00+00') GROUP BY location
+    unordered: true
+  - name: synthetic_tests_live
+    reference_sql: >-
+      SELECT type, count(*) AS tests FROM datadog.resources.synthetics_tests WHERE status = 'live' GROUP BY type
+    unordered: true
+  - name: hosts_per_role
+    reference_sql: >-
+      SELECT value AS role, count(*) AS hosts FROM datadog.resources.host_tags WHERE key = 'role' GROUP BY role
+    unordered: true
+  - name: busiest_host
+    reference_sql: >-
+      SELECT host_name, cpu_pct FROM datadog.resources.hosts WHERE up ORDER BY cpu_pct DESC NULLS LAST LIMIT 1
+  - name: roles_without_mfa
+    reference_sql: >-
+      SELECT u.email, r.name AS role FROM datadog.resources.users u, unnest(u.role_ids) AS t(role_id) JOIN datadog.resources.roles r ON r.id = t.role_id WHERE u.status = 'Active' AND NOT u.service_account AND NOT u.mfa_enabled
+    unordered: true
+  - name: largest_team
+    reference_sql: >-
+      SELECT handle, user_count FROM datadog.resources.teams ORDER BY user_count DESC LIMIT 1
+  - name: unowned_services
+    reference_sql: >-
+      SELECT service FROM datadog.resources.services WHERE team IS NULL
+    unordered: true
+  - name: infra_hosts_october
+    reference_sql: >-
+      SELECT value FROM datadog.resources.usage_summary(DATE '2026-10-01', end_month := DATE '2026-10-01') WHERE usage_type = 'infra_host_top99p'
+  - name: quoted_search_term
+    reference_sql: >-
+      SELECT datadog.main.search_term('service', 'checkout "v2"') AS term
+  - name: tag_list_team
+    reference_sql: >-
+      SELECT datadog.main.tag_map(['env:prod', 'team:core', 'legacy'])['team'] AS team
+  - name: slo_targets_by_team
+    reference_sql: >-
+      SELECT tags['team'] AS team, name, target, timeframe FROM datadog.resources.slos
+    unordered: true
+  - name: dashboards_per_author
+    reference_sql: >-
+      SELECT author_handle, count(*) AS dashboards, count(*) FILTER (WHERE is_read_only) AS read_only FROM datadog.resources.dashboards GROUP BY author_handle
+    unordered: true
