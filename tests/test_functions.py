@@ -224,6 +224,11 @@ def test_client_against_mock_sends_keys_and_reports_errors(mock_api: str) -> Non
     )
     with pytest.raises(DatadogError, match=r"HTTP 403.*API_KEY, APP_KEY"):
         bad.get("/api/v2/roles")
+    with pytest.raises(DatadogError, match=r"HTTP 400 \(this organization has no log or event index yet"):
+        good.post(
+            "/api/v2/logs/events/search",
+            {"filter": {"query": "*", "from": "now-1h", "to": "now", "indexes": ["__no_index_org__"]}},
+        )
     start = time.monotonic()
     body = good.post(
         "/api/v2/logs/events/search",

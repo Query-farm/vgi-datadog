@@ -555,6 +555,9 @@ def r_metric_tags(p: dict[str, str], body: Any, ctx: dict[str, Any], m: re.Match
 def r_logs(p: dict[str, str], body: Any, ctx: dict[str, Any], m: re.Match[str]) -> Any:
     if "indexes" not in (body or {}).get("filter", {}):
         raise RejectError(400, "filter.indexes expected")
+    if body["filter"]["indexes"] == ["__no_index_org__"]:
+        # What a live org with no index answers (verified 2026-11-15), for the worker's hint.
+        raise RejectError(400, "invalid_argument(No valid indexes specified)")
     return run_search(FIX["logs"], body, ctx)
 
 

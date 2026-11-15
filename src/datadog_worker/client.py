@@ -395,6 +395,13 @@ class DatadogClient:
                         " (check the datadog secret: API_KEY, APP_KEY and its scopes, and that SITE matches the "
                         f"organization's site, currently {self.config.site})"
                     )
+                elif err.code == 400 and "No valid indexes specified" in detail:
+                    # Seen on a live trial org (2026-11-15): logs and events search both answer this
+                    # until the organization has at least one index (i.e. before any data was sent).
+                    hint = (
+                        " (this organization has no log or event index yet: send some logs/events first, or create "
+                        "an index under Logs > Configuration > Indexes)"
+                    )
                 raise DatadogError(f"{method} {shown} failed with HTTP {err.code}{hint}: {detail}") from err
             except (urllib.error.URLError, TimeoutError, ConnectionError) as err:
                 if attempt == MAX_ATTEMPTS:
