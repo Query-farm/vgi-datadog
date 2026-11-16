@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.1
+
+- Fix: every query whose filter is pushed down to the worker (a `WHERE` clause, or
+  `ORDER BY … LIMIT`) failed with "No DuckDB-compatible engine is installed". The SDK binds
+  and evaluates pushed predicates with a local engine, which was only in the dev
+  dependency group; the runtime dependency is now `vgi-python[http,haybarn]`.
+
+## 0.1.0
 
 Initial release: Datadog (all sites) as SQL, read-only. Metric queries as long rows, log / span /
 event / audit search with SQL predicates pushed into Datadog search syntax, log and span analytics,
