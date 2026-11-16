@@ -42,7 +42,7 @@ LOAD vgi FROM query_farm;
 -- Haybarn 2.0: INSTALL vgi FROM community; LOAD vgi;
 
 ATTACH 'datadog' (TYPE vgi,
-  LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-datadog@v0.1.2 vgi-datadog-worker');
+  LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-datadog@v0.1.3 vgi-datadog-worker');
 ```
 
 From a checkout, `make build` and use `LOCATION '/abs/path/to/vgi-datadog/.venv/bin/vgi-datadog-worker'`.

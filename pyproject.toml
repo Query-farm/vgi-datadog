@@ -1,6 +1,6 @@
 [project]
 name = "vgi-datadog-worker"
-version = "0.1.2"
+version = "0.1.3"
 description = "Datadog as SQL in DuckDB: metrics, logs, spans, events, audit trail, monitors, SLOs, incidents and more, on any Datadog site (a Query.Farm VGI worker)."
 readme = "README.md"
 license = "0BSD"
