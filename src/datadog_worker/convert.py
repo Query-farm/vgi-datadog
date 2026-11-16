@@ -45,7 +45,7 @@ def parse_ts(value: Any) -> dt.datetime | None:
             n /= 1e3
         try:
             return dt.datetime.fromtimestamp(n, dt.UTC)
-        except (OverflowError, OSError, ValueError):
+        except OverflowError, OSError, ValueError:
             return None
     text = str(value).strip()
     if not text:
@@ -141,12 +141,12 @@ def convert(value: Any, type_: pa.DataType) -> Any:
     if pa.types.is_integer(type_):
         try:
             return int(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
     if pa.types.is_floating(type_):
         try:
             return float(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
     if pa.types.is_map(type_):
         if isinstance(value, dict):
