@@ -26,6 +26,8 @@ GROUP BY service ORDER BY errors DESC;
 `status = 'error' AND env = 'prod'` is sent to Datadog as `status:"error" env:"prod"`, so only matching
 logs cross the wire.
 
+vgi-datadog 0.2.0 speaks VGI protocol 3.4, so it needs Haybarn 2.0.1 or newer (Haybarn 2.0.0 loads a 3.3 `vgi` extension that cannot attach it).
+
 ## Quick start
 
 **Prerequisites:** [uv](https://docs.astral.sh/uv/) and DuckDB 2.0 or [Haybarn](https://query.farm/products/haybarn) 2.0.
@@ -42,7 +44,7 @@ LOAD vgi FROM query_farm;
 -- Haybarn 2.0: INSTALL vgi FROM community; LOAD vgi;
 
 ATTACH 'datadog' (TYPE vgi,
-  LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-datadog@v0.1.3 vgi-datadog-worker');
+  LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-datadog@v0.2.0 vgi-datadog-worker');
 ```
 
 From a checkout, `make build` and use `LOCATION '/abs/path/to/vgi-datadog/.venv/bin/vgi-datadog-worker'`.
